@@ -1,0 +1,25 @@
+[
+{
+  "directory": "/home/goobley/LaplaceGrid",
+  "command": "clang++ -MM -MF obj/src/grid.d -MP -MT obj/src/grid.o -std=c++11 -c -O0 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -ftemplate-depth=1024 src/grid.cpp",
+  "file": "/home/goobley/LaplaceGrid/src/grid.cpp"
+}
+,
+{
+  "directory": "/home/goobley/LaplaceGrid",
+  "command": "clang++ -std=c++11 -c -O0 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -ftemplate-depth=1024 src/grid.cpp -o obj/src/grid.o",
+  "file": "/home/goobley/LaplaceGrid/src/grid.cpp"
+}
+,
+{
+  "directory": "/home/goobley/LaplaceGrid",
+  "command": "clang++ -MM -MF obj/src/Debug/Debug.d -MP -MT obj/src/Debug/Debug.o -std=c++11 -c -O0 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -ftemplate-depth=1024 src/Debug/Debug.cpp",
+  "file": "/home/goobley/LaplaceGrid/src/Debug/Debug.cpp"
+}
+,
+{
+  "directory": "/home/goobley/LaplaceGrid",
+  "command": "clang++ -std=c++11 -c -O0 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -ftemplate-depth=1024 src/Debug/Debug.cpp -o obj/src/Debug/Debug.o",
+  "file": "/home/goobley/LaplaceGrid/src/Debug/Debug.cpp"
+}
+]
