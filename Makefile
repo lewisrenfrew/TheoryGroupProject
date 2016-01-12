@@ -11,7 +11,7 @@ OBJDIR=obj
 BINDIR=bin
 INC=
 
-CXXFLAGS=
+CXXFLAGS=-std=c++11 -Wall
 
 OPTFLAGS1=-O0 -g -march=native -mfpmath=sse # Debug
 OPTFLAGS2=-O2 -march=native -mfpmath=sse -flto -B/usr/lib/gold-ld # Clang Linux Release build
@@ -22,6 +22,7 @@ ASM=-S
 OPTFLAGS=$(OPTFLAGS1)
 # OBJECT=$(ASM)
 
+# Set true to enable threading, empty for not
 ENABLEOPENMP=true
 
 FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD # Debug
