@@ -1,0 +1,199 @@
+% simple.tex - a simple article to ilustrate document structure
+
+
+\documentclass{article}
+\usepackage{graphicx}
+
+
+\begin{document}
+
+\title{ Equations for Project work \LaTeX{} script }
+\author{Olle Windeman\\
+  School of physics,\\
+  university of Glasgow.\\
+  Glasgow,\\
+  scotland,\\
+  \texttt{olle@Windeman.se}}
+\date{\today}
+\maketitle
+
+
+
+\section{Equations}
+gauss' law
+\begin{equation}
+\vec{\nabla} \cdot \vec{E} = \frac{\rho}{\varepsilon_{0}}
+\label{1}
+\end{equation}
+
+for no enclosed charge
+\begin{equation}
+\vec{\nabla} \cdot \vec{E} = 0
+\label{2}
+\end{equation}
+
+and the electric field
+\begin{equation}
+\vec{E} = -\vec{\nabla}\phi
+\label{3}
+\end{equation}
+
+using eq3 in eq2 gives
+\begin{equation}
+\vec{\nabla} \cdot (-\vec{\nabla}\phi) = 0
+\label{4}
+\end{equation}
+
+which give the laplacian
+\begin{equation}
+\vec{\nabla}^2\phi = 0
+\label{5}
+\end{equation}
+
+the laplacian in polar coordinates
+\begin{equation}
+\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
+\label{6}
+\end{equation}
+
+the function is the same at all theta so last term disapears
+\begin{equation}
+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
+\label{7}
+\end{equation}
+
+this gives
+\begin{equation}
+\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}=0
+\label{8}
+\end{equation}
+
+moving the r
+\begin{equation}
+\vec{\nabla}^2\phi = r\frac{\partial^2\phi}{\partial r^2}+\frac{\partial\phi}{\partial r}=0
+\label{9}
+\end{equation}
+
+set variable lambda
+\begin{equation}
+\lambda(r) = \frac{\partial\phi}{\partial r}
+\label{10}
+\end{equation}
+
+this gives a characteristic equation
+\begin{equation}
+r\lambda ' + \lambda = 0
+\label{11}
+\end{equation}
+
+this gives
+\begin{equation}
+r\frac{\partial \lambda}{\partial r} = -\lambda
+\label{12}
+\end{equation}
+
+moving the partials
+\begin{equation}
+\frac{\partial \lambda}{\lambda}=-\frac{\partial r}{r}
+\label{13}
+\end{equation}
+
+integrating both sides
+\begin{equation}
+\int\frac{\partial \lambda}{\lambda}=-\int\frac{\partial r}{r}
+\label{14}
+\end{equation}
+
+That gives, c1 is in the reals
+\begin{equation}
+ln|\lambda(r)|=-ln|r| + c_1
+\label{15}
+\end{equation}
+
+
+take the exponential on both sides
+\begin{equation}
+\lambda(r)=\frac{1}{r} + c_2
+\label{16}
+\end{equation}
+
+where c2 is
+\begin{equation}
+c_2=e^{c_1}
+\label{17}
+\end{equation}
+
+going back from lambdas
+\begin{equation}
+\phi(r)=\int\lambda(r)dr
+\label{18}
+\end{equation}
+
+this gives
+\begin{equation}
+\phi(r)=c_2 \int\frac{1}{r}dr
+\label{19}
+\end{equation}
+
+integrating gives
+\begin{equation}
+\phi(r)=c_2ln|r| + c_3
+\label{20}
+\end{equation}
+
+boundary condition 1 , Ri is r inner
+\begin{equation}
+\phi(r=R_i)=0
+\label{21}
+\end{equation}
+
+boundary condition 2 , Ro is r outer
+\begin{equation}
+\phi(r=R_o)=V
+\label{22}
+\end{equation}
+
+for boundary 1
+\begin{equation}
+\phi(R_i)=c_2ln|R_i| + c_3=0
+\label{23}
+\end{equation}
+
+this leads to
+\begin{equation}
+c_3=-c_2ln|R_1|
+\label{24}
+\end{equation}
+
+putting \ref{24} into \ref{20}
+\begin{equation}
+\phi(r)=c_2ln|r| - c_2ln|R_1| 
+\label{25}
+\end{equation}
+
+Then \ref{25} becomes
+\begin{equation}
+\phi(r)=c_2ln\left|\frac{r}{R_i}\right|
+\label{26}
+\end{equation}
+
+using 2 bounuary condition on \ref{26} gives
+\begin{equation}
+\phi(R_o)=c_2ln\left|\frac{R_o}{R_i}\right|=V
+\label{27}
+\end{equation}
+
+finding a value for c2
+\begin{equation}
+c_2=\frac{V}{ln\left|\frac{R_o}{R_i}\right|}
+\label{28}
+\end{equation}
+
+so the final function can be found putting \ref{28} into \ref{26}
+\begin{equation}
+\phi(r)=\frac{V}{ln\left|\frac{R_o}{R_i}\right|}ln\left|\frac{r}{R_i}\right|
+\label{29}
+\end{equation}
+
+
+\end{document}
