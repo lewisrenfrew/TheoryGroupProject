@@ -5,6 +5,9 @@
    $License: MIT: http://opensource.org/licenses/MIT $
    ========================================================================== */
 #include "GlobalDefines.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_ONLY_PNG
+#include "stb_image.h"
 #include <vector>
 #include <utility>
 #include <cstdio>
@@ -12,6 +15,7 @@
 #include <cmath>
 #include <algorithm>
 #include <atomic>
+#include <unordered_map>
 
 
 typedef std::vector<f64> DoubleVec;
@@ -21,6 +25,73 @@ typedef std::vector<f64> DoubleVec;
 namespace Log
 {
     Lethani::Logfile log;
+}
+
+/// Convert easily between 32-bit RGBA and individual components
+union RGBA
+{
+    u32 rgba;
+    struct
+    {
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 a;
+    };
+
+    RGBA(u32 color) : rgba(color) {}
+    RGBA(u8 r, u8 g, u8 b, u8 a) : r(r), g(g), b(b), a(a) {}
+    RGBA() = default;
+    RGBA(const RGBA&) = default;
+    RGBA& operator=(const RGBA&) = default;
+    RGBA& operator=(u32 other) { rgba = other; return *this; }
+};
+
+namespace Color
+{
+    // NOTE(Chris): Modern computers are almost all little-endian i.e.
+    // AABBGGRR
+    constexpr const u32 White = 0xFFFFFFFF;
+    constexpr const u32 Red = 0xFF0000FF;
+    constexpr const u32 Green = 0xFF00FF00;
+    constexpr const u32 Blue = 0xFFFF0000;
+    constexpr const u32 Black = 0xFF000000;
+}
+
+// TODO(Chris): Script API here
+// This is a placeholder until it's done with dynamic scripting
+enum class ConstraintType
+{
+    CONSTANT, // Constant value
+    OUTSIDE, // Ignore
+    LERP_HORIZ, // Lerp along x
+    LERP_VERTIC, // Lerp along y
+    ZIP_X, // Join linked rows at this point
+    ZIP_Y, // Join linked columns at this point
+};
+
+typedef std::pair<ConstraintType, f64> Constraint;
+
+/// Returns a vector of numPoints points linearly interpolated between
+/// v1 and v2, useful for some boundary conditions (top and bottom of
+/// finite lengths in problem 1)
+DoubleVec
+LerpNPointsBetweenVoltages(f64 v1, f64 v2, uint numPoints)
+{
+    // Set x0 as first point, field has potential v1 here, and v2 at
+    // xn. We can interpolate them with the equation of a line:
+    // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
+
+    f64 a = (v2 - v1)/(f64)(numPoints-1);
+    f64 b = v1;
+
+    DoubleVec result;
+    result.reserve(numPoints);
+
+    for (uint i = 0; i < numPoints; ++i)
+        result.push_back(a*i + b);
+
+    return result;
 }
 
 /// Stores the state of the grid. This API will be VERY prone to
@@ -43,6 +114,109 @@ struct Grid
     Grid(Grid&&) = default;
     Grid& operator=(const Grid&) = default;
     Grid& operator=(Grid&&) = default;
+
+    // Image loading constructor
+    // TODO(Chris): Add scaling (super/sub-sampling)
+    Grid(const char* imagePath, const std::unordered_map<u32, Constraint> colorMapping)
+    {
+        int x, y, n;
+        u8* data = stbi_load(imagePath, &x, &y, &n, 4);
+        if (!data)
+            LOG("Image loading failed: %s", stbi_failure_reason());
+
+        lineLength = x;
+        numLines = y;
+        const u32* rgbaData = (const u32*)data;
+
+        voltages.assign(x*y, 0.0);
+
+        for (uint yLoc = 0; yLoc < (uint)y; ++yLoc)
+            for (uint xLoc = 0; xLoc < (uint)x; ++xLoc)
+            {
+                const RGBA texel = rgbaData[yLoc * lineLength + xLoc];
+                if (texel.rgba != Color::White)
+                {
+                    auto iter = colorMapping.find(texel.rgba);
+                    if (iter == colorMapping.end())
+                    {
+                        LOG("Unknown color %u <%u, %u, %u, %u> encountered at (%u, %u), ignoring",
+                            texel.rgba, (unsigned)texel.r, (unsigned)texel.g,
+                            (unsigned)texel.b, (unsigned)texel.a, xLoc, yLoc);
+
+                        continue;
+                    }
+
+                    switch (iter->second.first)
+                    {
+                    case ConstraintType::CONSTANT:
+                        AddFixedPoint(xLoc, yLoc, iter->second.second); // Yes, this reeks of hack for now
+                        break;
+                    case ConstraintType::OUTSIDE:
+                        // Do nothing
+                        break;
+                    case ConstraintType::LERP_HORIZ:
+                        // Need to scan and handle these later
+                        break;
+                    case ConstraintType::LERP_VERTIC:
+                        // Need to scan and handle these later
+                        break;
+                    default:
+                        LOG("Not yet implemented");
+                        break;
+                    }
+                }
+            }
+
+        // Assuming only one horizontal lerp colour
+        auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
+                                      [](decltype(colorMapping)::value_type val)
+                                      {
+                                          return val.second.first == ConstraintType::LERP_HORIZ;
+                                      });
+
+        if (horizLerp != colorMapping.end())
+        {
+            for (uint yLoc = 0; yLoc < (uint)y; ++yLoc)
+                for (uint xLoc = 0; xLoc < (uint)x; ++xLoc)
+                {
+                    const u32* texel = &rgbaData[yLoc * lineLength + xLoc];
+                    if (*texel == horizLerp->first)
+                    {
+                        uint len = 0;
+                        const uint maxLen = lineLength - xLoc;
+
+                        while (*texel == horizLerp->first && len <= maxLen)
+                        {
+                            ++texel;
+                            ++len;
+                        }
+
+                        // Need a pixel before and after the lerp for boundaries
+                        if (len == maxLen || xLoc == 0)
+                        {
+                            LOG("Lerp specification error, ignoring, make sure\n"
+                                "you have a constant pixel on each side");
+                            // continue outer loop
+                            break;
+                        }
+
+                        // Constants are already set at this point, so use them
+                        DoubleVec lerp = LerpNPointsBetweenVoltages(voltages[yLoc * lineLength + xLoc - 1],
+                                                                    voltages[yLoc * lineLength + xLoc + len],
+                                                                    len + 2);
+
+                        // Set the values
+                        for (uint i = 0; i < len+2; ++i)
+                        {
+                            AddFixedPoint(xLoc - 1 + i, yLoc, lerp[i]);
+                        }
+                    }
+                }
+        }
+        // Same can be done trivially for vertical lerp
+
+        stbi_image_free(data);
+    }
 
     /// Sets the two boundary plates for the basic box
     void
@@ -196,28 +370,6 @@ SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
     }
 }
 
-/// Returns a vector of numPoints points linearly interpolated between
-/// v1 and v2, useful for some boundary conditions (top and bottom of
-/// finite lengths in problem 1)
-DoubleVec
-LerpNPointsBetweenVoltages(f64 v1, f64 v2, uint numPoints)
-{
-    // Set x0 as first point, field has potential v1 here, and v2 at
-    // xn. We can interpolate them with the equation of a line:
-    // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
-
-    f64 a = (v2 - v1)/(f64)(numPoints-1);
-    f64 b = v1;
-
-    DoubleVec result;
-    result.reserve(numPoints);
-
-    for (uint i = 0; i < numPoints; ++i)
-        result.push_back(a*i + b);
-
-    return result;
-}
-
 /// Writes the gnuplot data file, to be used with WriteGnuplotFile
 /// Returns true on successful write
 bool
@@ -273,10 +425,11 @@ WriteGnuplotFile(const Grid& grid,
 
 int main(void)
 {
+    #if 0
     // Initialise
     Grid grid;
     grid.lineLength = 50;
-    grid.numLines   = 250;
+    grid.numLines   = 100;
 
     grid.InitialiseBasicGrid(10.0, -10.0);
 
@@ -314,6 +467,23 @@ int main(void)
     // Write output
     WriteGridForGnuplot(grid);
     WriteGnuplotFile(grid);
+    #else
+    // TODO(Chris): Change image aspect ratio to maintain square pixels?
+
+    // This looks better and far more generic
+    std::unordered_map<u32, Constraint> colorMap;
+    colorMap.emplace(Color::Black, std::make_pair(ConstraintType::CONSTANT, 0.0));
+    colorMap.emplace(Color::Red, std::make_pair(ConstraintType::CONSTANT, 10.0));
+    colorMap.emplace(Color::Blue, std::make_pair(ConstraintType::CONSTANT, -10.0));
+    colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
+    Grid grid("prob1.png", colorMap);
+
+    SolveGridLaplacianZero(&grid, 0.001, 10000);
+
+    WriteGridForGnuplot(grid);
+    WriteGnuplotFile(grid);
+
+    #endif
 
     return 0;
 }
