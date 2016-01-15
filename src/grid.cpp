@@ -52,10 +52,8 @@ struct Grid
 
         for (MemIndex i = 0; i < numLines; ++i)
         {
-            voltages[i*lineLength] = plusWall;
-            fixedPoints.push_back(std::make_pair(i, plusWall));
-            voltages[(i*lineLength)+lineLength-1] = minusWall;
-            fixedPoints.push_back(std::make_pair(i, minusWall));
+            AddFixedPoint(0, i, plusWall);
+            AddFixedPoint(lineLength - 1, i, minusWall);
         }
     }
 
@@ -129,7 +127,7 @@ SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
         // TODO(Chris): If we get hit by slowdown due to the memory
         // allocator (possible on big grids), then implement double
         // buffering
-        const DoubleVec prevVoltages = grid->voltages;
+        const DoubleVec prevVoltages(grid->voltages);
         const decltype(prevVoltages)* pVoltage = &prevVoltages;
 
         // Lambda returning Phi(x,y)
@@ -146,21 +144,17 @@ SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
 #endif
 
         // Loop over array and apply scheme at each point
-        for (uint x = 1; x < grid->lineLength - 1; ++x)
-            for (uint y = 1; y < grid->numLines - 1; ++y)
+        for (uint y = 1; y < grid->numLines - 1; ++y)
+            for (uint x = 1; x < grid->lineLength - 1; ++x)
             {
                 const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
-                // Dividing by the old value (Phi) is often dividing
-                // by 0 => infinite err, this will converge towards
-                // the relErr
-
                 const MemIndex index = y * grid->lineLength + x;
 
-                auto found = std::find_if(grid->fixedPoints.begin(), grid->fixedPoints.end(),
-                                          [index](decltype(grid->fixedPoints.front()) val)
-                                          {
-                                              return val.first == index;
-                                          });
+                const auto found = std::find_if(grid->fixedPoints.begin(), grid->fixedPoints.end(),
+                                                [index](decltype(grid->fixedPoints.front()) val)
+                                                {
+                                                    return val.first == index;
+                                                });
 
                 if (found != grid->fixedPoints.end())
                 {
@@ -172,6 +166,10 @@ SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
                     grid->voltages[index] = newVal;
 
                     const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
+                    // Dividing by the old value (Phi) is often dividing
+                    // by 0 => infinite err, this will converge towards
+                    // the relErr
+
                     // TODO(Chris): This is merking performance in
                     // multi-core, store for each row then single
                     // thread select over it? - I assume it's this
@@ -198,10 +196,32 @@ SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
     }
 }
 
+/// Returns a vector of numPoints points linearly interpolated between
+/// v1 and v2, useful for some boundary conditions (top and bottom of
+/// finite lengths in problem 1)
+DoubleVec
+LerpNPointsBetweenVoltages(f64 v1, f64 v2, uint numPoints)
+{
+    // Set x0 as first point, field has potential v1 here, and v2 at
+    // xn. We can interpolate them with the equation of a line:
+    // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
+
+    f64 a = (v2 - v1)/(f64)(numPoints-1);
+    f64 b = v1;
+
+    DoubleVec result;
+    result.reserve(numPoints);
+
+    for (uint i = 0; i < numPoints; ++i)
+        result.push_back(a*i + b);
+
+    return result;
+}
+
 /// Writes the gnuplot data file, to be used with WriteGnuplotFile
 /// Returns true on successful write
 bool
-WriteGridForGnuplot(const Grid& grid, const char* filename = "Grid.dat")
+WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat")
 {
     FILE* file = fopen(filename, "w");
     if (!file)
@@ -209,9 +229,9 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Grid.dat")
         return false;
     }
 
-    for (uint y = 0; y < grid.lineLength; ++y)
+    for (uint y = 0; y < grid.numLines; ++y)
     {
-        for (uint x = 0; x < grid.numLines; ++x)
+        for (uint x = 0; x < grid.lineLength; ++x)
         {
             fprintf(file, "%f ", grid.voltages[y * grid.lineLength + x]);
         }
@@ -226,8 +246,8 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Grid.dat")
 /// this. Returns true on successful write
 bool
 WriteGnuplotFile(const Grid& grid,
-                 const char* gridDataFile = "Grid.dat",
-                 const char* filename = "PlotFinal.gpi")
+                 const char* gridDataFile = "Plot/Grid.dat",
+                 const char* filename = "Plot/PlotFinal.gpi")
 {
     FILE* file = fopen(filename, "w");
     if (!file)
@@ -236,6 +256,7 @@ WriteGnuplotFile(const Grid& grid,
     }
 
     fprintf(file, "set terminal png size 1280,720\n"
+            "load 'Plot/MorelandColors.plt'\n"
             "set output \"Grid.png\"\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
@@ -254,25 +275,35 @@ int main(void)
 {
     // Initialise
     Grid grid;
-    grid.lineLength = 100;
-    grid.numLines   = 100;
+    grid.lineLength = 50;
+    grid.numLines   = 250;
 
     grid.InitialiseBasicGrid(10.0, -10.0);
 
     // NOTE(Chris): Impose central box - assume even lengths here for now
-    uint halfX = grid.lineLength / 2;
-    uint halfY = grid.numLines / 2;
+    const uint halfX = grid.lineLength / 2;
+    const uint halfY = grid.numLines / 2;
+
     grid.AddFixedPoint(halfX, halfY, 0.0);
     grid.AddFixedPoint(halfX-1, halfY-1, 0.0);
     grid.AddFixedPoint(halfX, halfY-1, 0.0);
     grid.AddFixedPoint(halfX-1, halfY, 0.0);
 
     // NOTE(Chris): Fix top and bottom to 0
+    // for (uint i = 0; i < grid.lineLength; ++i)
+    // {
+    //     grid.AddFixedPoint(i, 0, 0.0);
+    //     grid.AddFixedPoint(i, grid.numLines-1, 0.0);
+    // }
+
+    // Interpolate top and bottom lines
+    const DoubleVec topAndBottom = LerpNPointsBetweenVoltages(10, -10, grid.lineLength);
     for (uint i = 0; i < grid.lineLength; ++i)
     {
-        grid.AddFixedPoint(i, 0, 0.0);
-        grid.AddFixedPoint(i, grid.numLines-1, 0.0);
+        grid.AddFixedPoint(i, 0, topAndBottom[i]);
+        grid.AddFixedPoint(i, grid.numLines-1, topAndBottom[i]);
     }
+
 
     // grid.Print();
 
