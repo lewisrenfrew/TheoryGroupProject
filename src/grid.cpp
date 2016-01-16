@@ -84,6 +84,8 @@ public:
     Image& operator=(Image&& other) = default;
     ~Image() = default;
 
+    /// Loads an image at the given path with the desired componentes
+    /// (e.g. rgba is 4), returns true on success
     bool
     LoadImage(const char* path, const uint desiredComponents)
     {
@@ -113,27 +115,18 @@ public:
         return true;
     }
 
+    /// Returns an ImageInfo struct
     ImageInfo
     GetInfo()
     {
         return ImageInfo(x, y, n, fileN);
     }
 
+    /// Returns a pointer to the first byte of image data
     const u8*
     GetData()
     {
         return *data.get();
-    }
-
-    // Swap for non trivial assignment stuff
-    friend void swap(Image& first, Image& second)
-    {
-        using std::swap;
-        swap(first.data, second.data);
-        swap(first.x, second.x);
-        swap(first.y, second.y);
-        swap(first.n, second.n);
-        swap(first.fileN, second.fileN);
     }
 
 private:
@@ -144,6 +137,7 @@ private:
     std::shared_ptr<const u8*> data;
 };
 
+/// Image loading interface returning Option. Returns None on failure
 Jasnah::Option<Image>
 LoadImage(const char* path, const uint desiredComponents)
 {
