@@ -8,8 +8,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_ONLY_PNG
 #include "stb_image.h"
+#include "Jasnah.hpp"
 #include <vector>
 #include <utility>
+#include <memory>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -46,6 +48,114 @@ union RGBA
     RGBA& operator=(const RGBA&) = default;
     RGBA& operator=(u32 other) { rgba = other; return *this; }
 };
+
+/// Data that can be returned from the Image class
+struct ImageInfo
+{
+    ImageInfo(uint x, uint y, uint n, uint fileN)
+        : pxPerLine(x),
+          numScanlines(y),
+          numComponents(n),
+          fileNumComponents(fileN)
+    {}
+
+    const uint pxPerLine;
+    const uint numScanlines;
+    const uint numComponents;
+    const uint fileNumComponents;
+};
+
+/// RAII Wrapper for image loading
+class Image
+{
+public:
+    /// Construct with nullptr
+    Image()
+        : x(0),
+          y(0),
+          n(0),
+          fileN(0),
+          data(nullptr)
+    {}
+
+    Image(const Image& other) = default;
+    Image(Image&& other) = default;
+    Image& operator=(const Image& other) = default;
+    Image& operator=(Image&& other) = default;
+    ~Image() = default;
+
+    bool
+    LoadImage(const char* path, const uint desiredComponents)
+    {
+        int sizeX, sizeY, sizeN;
+        const u8* imageData = stbi_load(path, &sizeX, &sizeY, &sizeN, desiredComponents);
+        data = std::shared_ptr<const u8*>(new const u8*(imageData), [](const u8** ptr)
+                                          {
+                                                if (*ptr)
+                                                {
+                                                    LOG("Freeing");
+                                                    stbi_image_free(const_cast<u8*>(*ptr));
+                                                }
+                                          });
+
+
+
+        if (!data)
+        {
+            LOG("Image loading failed: %s", stbi_failure_reason());
+            return false;
+        }
+
+        x = sizeX;
+        y = sizeY;
+        n = sizeN;
+        fileN = desiredComponents;
+        return true;
+    }
+
+    ImageInfo
+    GetInfo()
+    {
+        return ImageInfo(x, y, n, fileN);
+    }
+
+    const u8*
+    GetData()
+    {
+        return *data.get();
+    }
+
+    // Swap for non trivial assignment stuff
+    friend void swap(Image& first, Image& second)
+    {
+        using std::swap;
+        swap(first.data, second.data);
+        swap(first.x, second.x);
+        swap(first.y, second.y);
+        swap(first.n, second.n);
+        swap(first.fileN, second.fileN);
+    }
+
+private:
+    /// Image data, width, height, number of components in the parsed
+    /// data and the original file
+    uint x, y, n, fileN;
+    /// Ref-counted pointer to the image data
+    std::shared_ptr<const u8*> data;
+};
+
+Jasnah::Option<Image>
+LoadImage(const char* path, const uint desiredComponents)
+{
+    Jasnah::Option<Image> im(Jasnah::ConstructInPlace);
+    bool success = im->LoadImage(path, desiredComponents);
+
+    if (!success)
+        return Jasnah::None;
+
+    return im;
+}
+
 
 namespace Color
 {
@@ -119,19 +229,25 @@ struct Grid
     // TODO(Chris): Add scaling (super/sub-sampling)
     Grid(const char* imagePath, const std::unordered_map<u32, Constraint> colorMapping)
     {
-        int x, y, n;
-        u8* data = stbi_load(imagePath, &x, &y, &n, 4);
-        if (!data)
-            LOG("Image loading failed: %s", stbi_failure_reason());
+        auto image = LoadImage(imagePath, 4);
+        if (!image)
+        {
+            LOG("Loading failed");
+            return;
+        }
 
-        lineLength = x;
-        numLines = y;
-        const u32* rgbaData = (const u32*)data;
+        ImageInfo info = image->GetInfo();
+        JasUnpack(info, pxPerLine, numScanlines);
 
-        voltages.assign(x*y, 0.0);
+        lineLength = pxPerLine;
+        numLines = numScanlines;
+        // const u32* rgbaData = (const u32*)data;
+        const u32* rgbaData = (const u32*)image->GetData();
 
-        for (uint yLoc = 0; yLoc < (uint)y; ++yLoc)
-            for (uint xLoc = 0; xLoc < (uint)x; ++xLoc)
+        voltages.assign(pxPerLine * numScanlines, 0.0);
+
+        for (uint yLoc = 0; yLoc < numScanlines; ++yLoc)
+            for (uint xLoc = 0; xLoc < pxPerLine; ++xLoc)
             {
                 const RGBA texel = rgbaData[yLoc * lineLength + xLoc];
                 if (texel.rgba != Color::White)
@@ -176,8 +292,8 @@ struct Grid
 
         if (horizLerp != colorMapping.end())
         {
-            for (uint yLoc = 0; yLoc < (uint)y; ++yLoc)
-                for (uint xLoc = 0; xLoc < (uint)x; ++xLoc)
+            for (uint yLoc = 0; yLoc < numScanlines; ++yLoc)
+                for (uint xLoc = 0; xLoc < pxPerLine; ++xLoc)
                 {
                     const u32* texel = &rgbaData[yLoc * lineLength + xLoc];
                     if (*texel == horizLerp->first)
@@ -190,6 +306,7 @@ struct Grid
                             ++texel;
                             ++len;
                         }
+                        // Texel now points to the pixel following the final lerp pixel
 
                         // Need a pixel before and after the lerp for boundaries
                         if (len == maxLen || xLoc == 0)
@@ -214,8 +331,6 @@ struct Grid
                 }
         }
         // Same can be done trivially for vertical lerp
-
-        stbi_image_free(data);
     }
 
     /// Sets the two boundary plates for the basic box
