@@ -84,8 +84,10 @@ $(BINDIR)/$(TARGET): buildrepo $(OBJECTS)
 	@echo "Linking $@..."
 	@$(CXX) $(OBJECTS) $(OPTFLAGS) $(LDFLAGS) -o $@
 
-plot: $(BINDIR)/$(TARGET)
+run: $(BINDIR)/$(TARGET)
 	./$(BINDIR)/$(TARGET)
+
+plot: run
 	gnuplot $(shell ls Plot/*.gpi)
 	#gnome-open Grid.png &
 
