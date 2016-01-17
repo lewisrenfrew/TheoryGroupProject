@@ -1,7 +1,7 @@
 Current TODO list/Roadmap (Not in the order of implementation):
 
 - Gradient calculation (requires some sort of Vector2 structure)
-  - E-field plotting
+  - E-field plotting. *started*
 
 - **TESTS** and general tidy up
 - Problem 0
@@ -13,3 +13,4 @@ Current TODO list/Roadmap (Not in the order of implementation):
 - UI (Electron)
 - Adaptive meshing/Other calculation methods
 - PixelsToMetres
+- Pipe input straight into gnuplot rather than going via the makefile or a shell script
