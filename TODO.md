@@ -9,6 +9,7 @@ Current TODO list/Roadmap (Not in the order of implementation):
 - Profiling
 - Image scaling/Aspect ratio
 - Other LERP and ZIPs
-- JS Interpreter (Duktape)
+- Interpreter (shunting yard/s-exp?)
 - UI (Electron)
 - Adaptive meshing/Other calculation methods
+- PixelsToMetres

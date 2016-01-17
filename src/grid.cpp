@@ -22,6 +22,32 @@
 
 typedef std::vector<f64> DoubleVec;
 
+/// 2D vector type for the gradient stuff
+template <typename T>
+struct V2
+{
+    // Storage
+    T x, y;
+    // Constructors
+    V2() : x(0), y(0) {}
+    V2(T x, T y) : x(x), y(y) {}
+    V2(const V2&) = default;
+    V2& operator=(const V2&) = default;
+
+    // Addition operator
+    const V2 operator+(const V2& other) const
+    {
+        return V2(x+other.x, y+other.y);
+    }
+    // Subtraction operator
+    const V2 operator-(const V2& other) const
+    {
+        return V2(x-other.x, y-other.y);
+    }
+};
+
+typedef V2<f64> V2d;
+
 // NOTE(Chris): Provide logging for everyone - create in main TU to
 // avoid ordering errors, maybe reduce number of TU's...
 namespace Log
@@ -397,6 +423,61 @@ struct Grid
     }
 };
 
+/// Calculates and holds the result of the gradient of a simulation grid
+class GradientGrid
+{
+public:
+    // Constructors and operators
+    GradientGrid() : gradients(), lineLength(0), numLines(0) {}
+    ~GradientGrid() = default;
+    GradientGrid(const GradientGrid&) = default;
+    GradientGrid& operator=(const GradientGrid&) = default;
+
+    /// Storage for the vectors in an array matching the cells
+    std::vector<V2d> gradients;
+    // As for Grid
+    uint lineLength;
+    uint numLines;
+
+    /// Calculate and store the negative gradient (i.e. the E-field
+    /// from the potential)
+    void
+    CalculateNegGradient(const Grid& grid)
+    {
+        // Currently using the symmetric derivative method over the
+        // inside of the grid: f'(a) ~ (f(a+h) - f(a-h)) / 2h. As we
+        // don't have pixels to metres yet, h is 1 from one cell to
+        // the adjacent. Outer points are currently set to (0,0),
+        // other points are set to (-d/dx Phi, -d/dy Phi)
+        // TODO(Chris): PixelsToMetres
+        JasUnpack(grid, voltages);
+        numLines = grid.numLines;
+        lineLength = grid.lineLength;
+
+        if (gradients.size() != 0)
+            gradients.clear();
+
+        // Yes there's excess construction here, I don't think it will
+        // matter though, probably less impact than adding branching
+        // to the loop
+        gradients.assign(voltages.size(), V2d(0.0,0.0));
+
+        const auto Phi = [&voltages, this](uint x, uint y) -> f64
+        {
+            return voltages[y*lineLength + x];
+        };
+
+        for (uint y = 1; y < numLines - 1; ++y)
+            for (uint x = 1; x < lineLength - 1; ++ x)
+            {
+                const f64 xDeriv = (Phi(x+1, y) - Phi(x-1, y)) / 2.0;
+                const f64 yDeriv = (Phi(x, y+1) - Phi(x, y-1)) / 2.0;
+
+                gradients[y * lineLength + x] = V2d(-xDeriv, -yDeriv);
+            }
+    }
+};
+
 /// The function that does the work for now. Repeatedly applies a
 /// finite difference scheme to the grid, until the maximum relative
 /// change over one iteration is less zeroTol or maxIter iterations
@@ -508,6 +589,44 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat")
     return true;
 }
 
+/// Writes the gnuplot data file for gradients (E-field), to be used
+/// with WriteGnuplotGradientFile. Returns true on successful write.
+/// stepSize ignores some of the data so as not to overcrowd the plot
+/// with lines
+bool
+WriteGradientGridForGnuplot(const GradientGrid& grid,
+                            uint stepSize = 2,
+                            const char* filename = "Plot/GradientGrid.dat")
+{
+    FILE* file = fopen(filename, "w");
+    if (!file)
+    {
+        return false;
+    }
+
+    JasUnpack(grid, gradients, numLines, lineLength);
+
+    for (uint y = 0; y < numLines; ++y)
+    {
+        if (y % stepSize == 0)
+            continue;
+
+        for (uint x = 0; x < lineLength; ++x)
+        {
+            if (x % stepSize == 0)
+                continue;
+
+            fprintf(file, "%u %u %f %f\n", x, y,
+                    gradients[y * lineLength + x].x,
+                    gradients[y * lineLength + x].y);
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+    return true;
+}
+
 /// Prints a script config file for gnuplot, the makefile can run
 /// this. Returns true on successful write
 bool
@@ -537,6 +656,8 @@ WriteGnuplotColormapFile(const Grid& grid,
     return true;
 }
 
+// Prints a script config file for gnuplot to plot the contour map.
+// Returns true on succesful write
 bool
 WriteGnuplotContourFile(const Grid& grid,
                         const char* gridDataFile = "Plot/Grid.dat",
@@ -563,6 +684,39 @@ WriteGnuplotContourFile(const Grid& grid,
             "splot \"%s\" with lines title \"\"",
             grid.lineLength-1,
             grid.numLines-1,
+            gridDataFile);
+
+    return true;
+}
+
+// Prints a script config file for gnuplot to plot the E-field map.
+// Returns true on succesful write. scaling scales the magnitude of
+// the vectors
+bool
+WriteGnuplotGradientFile(const GradientGrid& grid,
+                         f64 scaling = 2.5,
+                         const char* gridDataFile = "Plot/GradientGrid.dat",
+                         const char* filename = "Plot/PlotGradient.gpi")
+{
+    FILE* file = fopen(filename, "w");
+    if (!file)
+    {
+        return false;
+    }
+
+    fprintf(file, "set terminal png size 1280,720\n"
+            "load 'Plot/MorelandColors.plt'\n"
+            "set output \"GradientGrid.png\"\n"
+            "set xlabel \"x\"\nset ylabel \"y\"\n"
+            "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set style data lines\n"
+            "set title \"E-field (needs scale) (V/m)\"\n"
+            "scaling = %f\n"
+            "plot \"%s\" using 1:2:($3*scaling):($4*scaling):(sqrt($3*$3+$4*$4)) with vectors"
+            " filled lc palette title \"\"",
+            grid.lineLength-1,
+            grid.numLines-1,
+            scaling,
             gridDataFile);
 
     return true;
@@ -625,9 +779,15 @@ int main(void)
 
     SolveGridLaplacianZero(&grid, 0.001, 10000);
 
+    GradientGrid grad;
+    grad.CalculateNegGradient(grid);
+
     WriteGridForGnuplot(grid);
     WriteGnuplotColormapFile(grid);
     WriteGnuplotContourFile(grid);
+
+    WriteGradientGridForGnuplot(grad);
+    WriteGnuplotGradientFile(grad);
 
     #endif
 
