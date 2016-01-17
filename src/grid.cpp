@@ -91,6 +91,11 @@ public:
     {
         int sizeX, sizeY, sizeN;
         const u8* imageData = stbi_load(path, &sizeX, &sizeY, &sizeN, desiredComponents);
+        if (!imageData)
+        {
+            LOG("Image loading failed: %s", stbi_failure_reason());
+            return false;
+        }
         data = std::shared_ptr<const u8*>(new const u8*(imageData), [](const u8** ptr)
                                           {
                                                 if (*ptr)
@@ -102,11 +107,6 @@ public:
 
 
 
-        if (!data)
-        {
-            LOG("Image loading failed: %s", stbi_failure_reason());
-            return false;
-        }
 
         x = sizeX;
         y = sizeY;
@@ -117,14 +117,14 @@ public:
 
     /// Returns an ImageInfo struct
     ImageInfo
-    GetInfo()
+    GetInfo() const
     {
         return ImageInfo(x, y, n, fileN);
     }
 
     /// Returns a pointer to the first byte of image data
     const u8*
-    GetData()
+    GetData() const
     {
         return *data.get();
     }
@@ -223,10 +223,13 @@ struct Grid
     // TODO(Chris): Add scaling (super/sub-sampling)
     Grid(const char* imagePath, const std::unordered_map<u32, Constraint> colorMapping)
     {
-        auto image = LoadImage(imagePath, 4);
+        const Jasnah::Option<Image> image = LoadImage(imagePath, 4);
         if (!image)
         {
             LOG("Loading failed");
+            // TODO(Chris): Don't have this as a constructor, it can't
+            // return an error, only throw
+            throw std::invalid_argument("Bad path or something");
             return;
         }
 
@@ -325,6 +328,8 @@ struct Grid
                 }
         }
         // Same can be done trivially for vertical lerp
+
+        // Do scaling here
     }
 
     /// Sets the two boundary plates for the basic box
@@ -494,7 +499,7 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat")
     {
         for (uint x = 0; x < grid.lineLength; ++x)
         {
-            fprintf(file, "%f ", grid.voltages[y * grid.lineLength + x]);
+            fprintf(file, "%u %u %f\n", x, y, grid.voltages[y * grid.lineLength + x]);
         }
         fprintf(file, "\n");
     }
@@ -506,9 +511,9 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat")
 /// Prints a script config file for gnuplot, the makefile can run
 /// this. Returns true on successful write
 bool
-WriteGnuplotFile(const Grid& grid,
-                 const char* gridDataFile = "Plot/Grid.dat",
-                 const char* filename = "Plot/PlotFinal.gpi")
+WriteGnuplotColormapFile(const Grid& grid,
+                         const char* gridDataFile = "Plot/Grid.dat",
+                         const char* filename = "Plot/PlotFinal.gpi")
 {
     FILE* file = fopen(filename, "w");
     if (!file)
@@ -523,12 +528,43 @@ WriteGnuplotFile(const Grid& grid,
             "set xrange [0:%u]; set yrange [0:%u]\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
-            "plot \"%s\" matrix with image title \"Numeric Solution\"",
+            "plot \"%s\" with image title \"Numeric Solution\"",
             grid.lineLength-1,
             grid.numLines-1,
             gridDataFile);
 
     fclose(file);
+    return true;
+}
+
+bool
+WriteGnuplotContourFile(const Grid& grid,
+                        const char* gridDataFile = "Plot/Grid.dat",
+                        const char* filename = "Plot/PlotContour.gpi")
+{
+    FILE* file = fopen(filename, "w");
+    if (!file)
+    {
+        return false;
+    }
+
+    fprintf(file, "set terminal png size 1280,720\n"
+            "load 'Plot/MorelandColors.plt'\n"
+            "set output \"GridContour.png\"\n"
+            "set view map\n"
+            "unset surface\n"
+            "set contour base\n"
+            "set cntrparam bspline\n"
+            "set cntrparam levels auto 20\n"
+            "set xlabel \"x\"\nset ylabel \"y\"\n"
+            "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set style data lines\n"
+            "set title \"Stable Potential (V)\"\n"
+            "splot \"%s\" with lines title \"\"",
+            grid.lineLength-1,
+            grid.numLines-1,
+            gridDataFile);
+
     return true;
 }
 
@@ -590,7 +626,8 @@ int main(void)
     SolveGridLaplacianZero(&grid, 0.001, 10000);
 
     WriteGridForGnuplot(grid);
-    WriteGnuplotFile(grid);
+    WriteGnuplotColormapFile(grid);
+    WriteGnuplotContourFile(grid);
 
     #endif
 

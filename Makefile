@@ -19,7 +19,7 @@ OPTFLAGS3=-O2 -march=native -mfpmath=sse # GCC Release Linux / Clang Release Mac
 OPTFLAGS4=-O2 -march=native -mfpmath=sse -Wa,-q -mmacosx-version-min=10.9 # GCC-5 Release Mac, use Clang linker
 OBJECT=-c
 ASM=-S
-OPTFLAGS=$(OPTFLAGS3)
+OPTFLAGS=$(OPTFLAGS1)
 # OBJECT=$(ASM)
 
 # Set true to enable threading, empty for not
@@ -86,8 +86,8 @@ $(BINDIR)/$(TARGET): buildrepo $(OBJECTS)
 
 plot: $(BINDIR)/$(TARGET)
 	./$(BINDIR)/$(TARGET)
-	gnuplot Plot/PlotFinal.gpi
-	gnome-open Grid.png &
+	gnuplot $(shell ls Plot/*.gpi)
+	#gnome-open Grid.png &
 
 -include $(DEPS)
 
