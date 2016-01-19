@@ -124,11 +124,11 @@ public:
         }
         data = std::shared_ptr<const u8*>(new const u8*(imageData), [](const u8** ptr)
                                           {
-                                                if (*ptr)
-                                                {
-                                                    LOG("Freeing");
-                                                    stbi_image_free(const_cast<u8*>(*ptr));
-                                                }
+                                              if (*ptr)
+                                              {
+                                                  LOG("Freeing");
+                                                  stbi_image_free(const_cast<u8*>(*ptr));
+                                              }
                                           });
 
 
@@ -193,11 +193,11 @@ namespace Color
 enum class ConstraintType
 {
     CONSTANT, // Constant value
-    OUTSIDE, // Ignore
-    LERP_HORIZ, // Lerp along x
-    LERP_VERTIC, // Lerp along y
-    ZIP_X, // Join linked rows at this point
-    ZIP_Y, // Join linked columns at this point
+        OUTSIDE, // Ignore
+        LERP_HORIZ, // Lerp along x
+        LERP_VERTIC, // Lerp along y
+        ZIP_X, // Join linked rows at this point
+        ZIP_Y, // Join linked columns at this point
 };
 
 typedef std::pair<ConstraintType, f64> Constraint;
@@ -463,9 +463,9 @@ public:
         gradients.assign(voltages.size(), V2d(0.0,0.0));
 
         const auto Phi = [&voltages, this](uint x, uint y) -> f64
-        {
-            return voltages[y*lineLength + x];
-        };
+            {
+                return voltages[y*lineLength + x];
+            };
 
         for (uint y = 1; y < numLines - 1; ++y)
             for (uint x = 1; x < lineLength - 1; ++ x)
@@ -744,9 +744,57 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
     return true;
 }
 
+struct CommandLineFlags
+{
+    bool lastMatrix;
+    std::string infofilepath;
+}
+
+
+    CommandLineFlags ParseArguments()
+    {
+        try
+        {
+            // Aguments are in order: discription, seperation char, version number. 
+            TCLAP::CmdLine cmd("Solving the electric and the voltage fields of a electrostatic prblem ",
+                               ' ', Version::Gridle);
+	  
+            // Aguments are in order: '-' flag, "--" flag,
+            // discription,add to an object(cmd line), default state.
+            TCLAP::SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used",
+                                        cmd,false);
+	  
+            // Aguments are in order: '-' flag, "--" flag,
+            // discription, default state, default string value , path, add to an object(cmd line).
+            TCLAP::ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
+                                                  true, "", "path", cmd);
+	  
+            CommandLineFlags ret;
+
+            ret.lastMatrix = lastMatrix.getValue();
+            ret.infofilepath = infofile.getValue();
+	  
+            if(lastMatrix)
+            {
+                //TODO, get the previous matrix
+            }
+            else
+            {
+                //TODO,
+            }
+
+
+        }
+        catch(TCLAP::ArgException& ex)
+        {
+            LOG("Parsing error %s for arg %s", ex.error().c_str(), ex.argId().c_str());
+        }
+    }
+
+
 int main(void)
 {
-    #if 0
+#if 0
     // Initialise
     Grid grid;
     grid.lineLength = 50;
@@ -788,7 +836,7 @@ int main(void)
     // Write output
     WriteGridForGnuplot(grid);
     WriteGnuplotFile(grid);
-    #else
+#else
     // TODO(Chris): Change image aspect ratio to maintain square pixels?
 
     // This looks better and far more generic
@@ -812,7 +860,7 @@ int main(void)
     WriteGradientGridForGnuplot(grad);
     WriteGnuplotGradientFile(grad, 0.02);
 
-    #endif
+#endif
 
     return 0;
 }
