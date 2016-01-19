@@ -28,6 +28,7 @@ Then to update:
 # Make sure you're on your master branch
 git checkout master
 # Merge
+git fetch upstream
 git merge upstream/master
 ```
 
