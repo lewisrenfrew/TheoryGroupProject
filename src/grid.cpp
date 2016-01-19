@@ -807,6 +807,55 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
     return true;
 }
 
+#if 0
+struct CommandLineFlags
+{
+    bool lastMatrix;
+    std::string infofilepath;
+};
+
+
+CommandLineFlags ParseArguments()
+{
+    try
+    {
+        // Aguments are in order: discription, seperation char, version number.
+        TCLAP::CmdLine cmd("Solving the electric and the voltage fields of a electrostatic prblem ",
+                           ' ', Version::Gridle);
+
+        // Aguments are in order: '-' flag, "--" flag,
+        // discription,add to an object(cmd line), default state.
+        TCLAP::SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used",
+                                    cmd,false);
+
+        // Aguments are in order: '-' flag, "--" flag,
+        // discription, default state, default string value , path, add to an object(cmd line).
+        TCLAP::ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
+                                              true, "", "path", cmd);
+
+        CommandLineFlags ret;
+
+        ret.lastMatrix = lastMatrix.getValue();
+        ret.infofilepath = infofile.getValue();
+
+        if(lastMatrix)
+        {
+            //TODO, get the previous matrix
+        }
+        else
+        {
+            //TODO,
+        }
+
+
+    }
+    catch(TCLAP::ArgException& ex)
+    {
+        LOG("Parsing error %s for arg %s", ex.error().c_str(), ex.argId().c_str());
+    }
+}
+#endif
+
 #ifndef CATCH_CONFIG_MAIN
 int main(void)
 {
