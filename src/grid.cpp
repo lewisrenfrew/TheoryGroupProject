@@ -19,12 +19,17 @@
 #include <atomic>
 #include <unordered_map>
 
+#ifdef CATCH_CONFIG_MAIN
+#define LOG
+#else
 // NOTE(Chris): Provide logging for everyone - create in main TU to
 // avoid ordering errors, maybe reduce number of TU's...
 namespace Log
 {
     Lethani::Logfile log;
 }
+#endif
+
 
 // http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 inline
