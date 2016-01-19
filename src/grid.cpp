@@ -30,6 +30,19 @@ namespace Log
 }
 #endif
 
+// Scary inline assembly for profiling
+static void
+Escape(void* p)
+{
+    asm volatile("" : : "g"(p) : "memory");
+}
+
+static void
+Clobber()
+{
+    asm volatile("" : : : "memory");
+}
+
 
 // http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 inline
@@ -244,8 +257,9 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
 
 /// Stores the state of the grid. This API will be VERY prone to
 /// breakage for now
-struct Grid
+class Grid
 {
+public:
     /// Stores the voltage for each cell
     DoubleVec voltages;
     /// Width of the simulation area
@@ -253,7 +267,8 @@ struct Grid
     /// Height of the simulation area
     uint numLines;
     /// Stores the indices and values of the fixed points
-    std::vector<std::pair<MemIndex, f64> > fixedPoints;
+    // std::vector<std::pair<MemIndex, f64> > fixedPoints;
+    std::unordered_map<MemIndex, f64> fixedPoints;
 
     /// Default constructors and assignment operators to keep
     /// everything working
@@ -409,11 +424,7 @@ struct Grid
                     const uint unscaled = y / scaleFactor * lineLength / scaleFactor + x / scaleFactor;
 
                     // See if unscaled is in the list of fixed points
-                    auto found = std::find_if(fp.begin(), fp.end(),
-                                              [unscaled](decltype(fp)::value_type val)
-                                              {
-                                                  return val.first == unscaled;
-                                              });
+                    auto found = fp.find(unscaled);
 
                     // If it is add (x,y) to the new list of fixed points
                     if (found != fp.end())
@@ -475,11 +486,7 @@ struct Grid
     AddFixedPoint(const uint x, const uint y, const f64 val)
     {
         const uint index = y * lineLength + x;
-        auto found = std::find_if(fixedPoints.begin(), fixedPoints.end(),
-                                  [index, this](decltype(fixedPoints.front()) val)
-                                  {
-                                      return val.first == index;
-                                  });
+        auto found = fixedPoints.find(index);
 
         if (found != fixedPoints.end())
         {
@@ -487,7 +494,8 @@ struct Grid
         }
 
         voltages[index] = val;
-        fixedPoints.push_back(std::make_pair(index, val));
+        // fixedPoints.push_back(std::make_pair(index, val));
+        fixedPoints.emplace(std::make_pair(index, val));
     }
 };
 
@@ -586,11 +594,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
             {
                 const MemIndex index = y * grid->lineLength + x;
 
-                const auto found = std::find_if(grid->fixedPoints.begin(), grid->fixedPoints.end(),
-                                                [index](decltype(grid->fixedPoints.front()) val)
-                                                {
-                                                    return val.first == index;
-                                                });
+                auto found = grid->fixedPoints.find(index);
 
                 if (found != grid->fixedPoints.end())
                 {
@@ -600,6 +604,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                 else
                 {
                     const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
+
                     grid->voltages[index] = newVal;
 
                     const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
@@ -616,6 +621,8 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                         maxErr = absErr;
                     }
                 }
+
+                // Escape(grid->voltages.data());
 
 
             }

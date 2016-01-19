@@ -1,5 +1,5 @@
-# CXX=clang++
-CXX=g++-5
+CXX=clang++
+# CXX=g++-5
 # CXX=g++
 
 HERE:=$(shell pwd)
@@ -17,15 +17,16 @@ OPTFLAGS1=-O0 -g -march=native -mfpmath=sse # Debug
 OPTFLAGS2=-O2 -march=native -mfpmath=sse -flto -B/usr/lib/gold-ld # Clang Linux Release build
 OPTFLAGS3=-O2 -march=native -mfpmath=sse # GCC Release Linux / Clang Release Mac
 OPTFLAGS4=-O2 -march=native -mfpmath=sse -Wa,-q -mmacosx-version-min=10.9 # GCC-5 Release Mac, use Clang linker
+OPTFLAGS5=-O2 -g -march=native -mfpmath=sse # Linux perf profile
 OBJECT=-c
 ASM=-S
-OPTFLAGS=$(OPTFLAGS3)
+OPTFLAGS=$(OPTFLAGS5)
 # OBJECT=$(ASM)
 
 # Set true to enable threading, empty for not
-ENABLEOPENMP=true
+ENABLEOPENMP=
 
-FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD # Debug
+FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer # Debug
 FEATUREFLAGS2=-DNDEBUG -DMAT_ACC -DUSE_SIMD # Release
 FEATUREFLAGS3=-DDEBUG -DMAT_ACC # Debug no SIMD
 FEATUREFLAGS4=-DNDEBUG -DMAT_ACC # Release no SIMD
