@@ -30,6 +30,7 @@ namespace Log
 }
 #endif
 
+#if 0
 // Scary inline assembly for profiling
 static void
 Escape(void* p)
@@ -42,6 +43,7 @@ Clobber()
 {
     asm volatile("" : : : "memory");
 }
+#endif
 
 
 // http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
@@ -590,6 +592,9 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 
         // Loop over array and apply scheme at each point
         for (uint y = 1; y < grid->numLines - 1; ++y)
+        {
+            f64 innerMaxErr = 0.0;
+
             for (uint x = 1; x < grid->lineLength - 1; ++x)
             {
                 const MemIndex index = y * grid->lineLength + x;
@@ -607,6 +612,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 
                     grid->voltages[index] = newVal;
 
+                    // TODO(Chris): Can we lose the costly division somewhere?
                     const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
                     // Dividing by the old value (Phi) is often dividing
                     // by 0 => infinite err, this will converge towards
@@ -616,16 +622,20 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                     // multi-core, store for each row then single
                     // thread select over it? - I assume it's this
                     // anyway
-                    if (absErr > maxErr)
+                    if (absErr > innerMaxErr)
                     {
-                        maxErr = absErr;
+                        innerMaxErr = absErr;
                     }
                 }
-
-                // Escape(grid->voltages.data());
-
-
             }
+
+            // Reduce number of atomic operations (costly due to memory safety)
+            if (innerMaxErr > maxErr)
+            {
+                maxErr = innerMaxErr;
+            }
+
+        }
 
         // Log iteration number and error
 #ifndef GOMP
