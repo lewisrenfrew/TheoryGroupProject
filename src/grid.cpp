@@ -226,15 +226,14 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
     // xn. We can interpolate them with the equation of a line:
     // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
 
-    DoubleVec result;
-
     // We need at least 2 points between 2 voltages
     if (numPoints < 2)
         return DoubleVec();
 
-    f64 a = (v2 - v1)/(f64)(numPoints-1);
-    f64 b = v1;
+    const f64 a = (v2 - v1)/(f64)(numPoints-1);
+    const f64 b = v1;
 
+    DoubleVec result;
     result.reserve(numPoints);
 
     for (uint i = 0; i < numPoints; ++i)
@@ -311,7 +310,7 @@ struct Grid
                         AddFixedPoint(xLoc, yLoc, iter->second.second); // Yes, this reeks of hack for now
                         break;
                     case ConstraintType::OUTSIDE:
-                        // Do nothing
+                        // Do nothing - maybe set to constant 0?
                         break;
                     case ConstraintType::LERP_HORIZ:
                         // Need to scan and handle these later
@@ -327,6 +326,7 @@ struct Grid
             }
 
         // Assuming only one horizontal lerp colour
+        // TODO(Chris): Make this check more rigourous
         auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
                                       [](std::remove_reference<decltype(colorMapping)>::type::value_type val)
                                       {
@@ -728,16 +728,23 @@ WriteGnuplotColormapFile(const Grid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"Grid.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"Grid.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"Grid.png\"\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
             "plot \"%s\" with image title \"Numeric Solution\"",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             gridDataFile);
 
     fclose(file);
@@ -757,9 +764,14 @@ WriteGnuplotContourFile(const Grid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"GridContour.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"GridContour.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"GridContour.png\"\n"
             "set key outside\n"
             "set view map\n"
             "unset surface\n"
@@ -768,12 +780,14 @@ WriteGnuplotContourFile(const Grid& grid,
             "set cntrparam levels auto 20\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
             "splot \"%s\" with lines title \"\"\n"
             "set key default\n",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             gridDataFile);
 
     return true;
@@ -794,18 +808,25 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"GradientGrid.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"GradientGrid.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"GradientGrid.png\"\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"E-field (V/m)\"\n"
             "scaling = %f\n"
             "plot \"%s\" using 1:2:($3*scaling):($4*scaling):(sqrt($3*$3+$4*$4)) with vectors"
             " filled lc palette title \"\"",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             scaling,
             gridDataFile);
 
@@ -918,7 +939,7 @@ int main(void)
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
     // Grid grid("prob1.png", colorMap);
     Grid grid;
-    grid.LoadFromImage("prob0.png", colorMap, 2);
+    grid.LoadFromImage("prob1.png", colorMap, 2);
 
     SolveGridLaplacianZero(&grid, 0.001, 10000);
 
