@@ -39,6 +39,10 @@ IsPow2(uint val)
     return val && !(val & (val - 1));
 }
 
+template <typename T>
+inline constexpr
+T Square(T val) { return val * val; }
+
 typedef std::vector<f64> DoubleVec;
 
 /// 2D vector type for the gradient stuff
@@ -260,7 +264,7 @@ struct Grid
     bool
     LoadFromImage(const char* imagePath,
                   const std::unordered_map<u32, Constraint>& colorMapping,
-                  const uint scaleFactor = 1)
+                  uint scaleFactor = 1)
     {
         const Jasnah::Option<Image> image = LoadImage(imagePath, 4);
         if (!image)
@@ -367,9 +371,52 @@ struct Grid
         // Same can be done trivially for vertical lerp
 
         // Do scaling here
-        if (!IsPow2(scaleFactor))
+        if (!IsPow2(scaleFactor) && scaleFactor != 0)
         {
+            LOG("Image scale factor must be a power of 2 and non-zero, ignoring");
+            scaleFactor = 1;
+        }
 
+        if (scaleFactor != 1)
+        {
+            DoubleVec scaledImage;
+            // Reserve new size
+            // scaledImage.reserve(Square(scaleFactor) * voltages.size());
+
+            // Set new dimensions
+            numLines *= scaleFactor;
+            lineLength *= scaleFactor;
+
+            // set new image to 0
+            scaledImage.assign(numLines * lineLength, 0.0);
+
+            std::swap(voltages, scaledImage);
+
+            // Assign fixed points from previous fixed points
+            decltype(fixedPoints) fp;
+            std::swap(fixedPoints, fp);
+
+            for (uint y = 0; y < numLines; ++y)
+            {
+                for (uint x = 0; x < lineLength; ++x)
+                {
+                    // unscaled is the index that this point had in the original unscaled image
+                    const uint unscaled = y / scaleFactor * lineLength / scaleFactor + x / scaleFactor;
+
+                    // See if unscaled is in the list of fixed points
+                    auto found = std::find_if(fp.begin(), fp.end(),
+                                              [unscaled](decltype(fp)::value_type val)
+                                              {
+                                                  return val.first == unscaled;
+                                              });
+
+                    // If it is add (x,y) to the new list of fixed points
+                    if (found != fp.end())
+                    {
+                        AddFixedPoint(x, y, found->second);
+                    }
+                }
+            }
         }
         return true;
     }
@@ -817,7 +864,7 @@ int main(void)
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
     // Grid grid("prob1.png", colorMap);
     Grid grid;
-    grid.LoadFromImage("prob0.png", colorMap);
+    grid.LoadFromImage("prob0.png", colorMap, 2);
 
     SolveGridLaplacianZero(&grid, 0.001, 10000);
 
