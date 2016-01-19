@@ -225,22 +225,21 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
     // Set x0 as first point, field has potential v1 here, and v2 at
     // xn. We can interpolate them with the equation of a line:
     // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
-  
-  DoubleVec result;
-    if (numPoints == 1)
-        {
-	  result = std::vector<f64>{v1, (v1+v2)/2, v2};
-        }
-    else
-        {
-	  f64 a = (v2 - v1)/(f64)(numPoints-1);
-	  f64 b = v1;
 
-	  result.reserve(numPoints);
+    DoubleVec result;
 
-	  for (uint i = 0; i < numPoints; ++i)
-	    result.push_back(a*i + b);
-	 }
+    // We need at least 2 points between 2 voltages
+    if (numPoints < 2)
+        return DoubleVec();
+
+    f64 a = (v2 - v1)/(f64)(numPoints-1);
+    f64 b = v1;
+
+    result.reserve(numPoints);
+
+    for (uint i = 0; i < numPoints; ++i)
+        result.push_back(a*i + b);
+
     return result;
 }
 
@@ -398,7 +397,7 @@ struct Grid
 
             std::swap(voltages, scaledImage);
 
-            // Assign fixed points from previous fixed points
+            // Assign scaled fixed points from previous fixed points
             decltype(fixedPoints) fp;
             std::swap(fixedPoints, fp);
 
