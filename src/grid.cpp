@@ -19,6 +19,20 @@
 #include <atomic>
 #include <unordered_map>
 
+// NOTE(Chris): Provide logging for everyone - create in main TU to
+// avoid ordering errors, maybe reduce number of TU's...
+namespace Log
+{
+    Lethani::Logfile log;
+}
+
+// http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+inline
+bool
+IsPow2(uint val)
+{
+    return val && !(val & (val - 1));
+}
 
 typedef std::vector<f64> DoubleVec;
 
@@ -47,13 +61,6 @@ struct V2
 };
 
 typedef V2<f64> V2d;
-
-// NOTE(Chris): Provide logging for everyone - create in main TU to
-// avoid ordering errors, maybe reduce number of TU's...
-namespace Log
-{
-    Lethani::Logfile log;
-}
 
 /// Convert easily between 32-bit RGBA and individual components
 union RGBA
@@ -180,6 +187,7 @@ namespace Color
     // AABBGGRR
     constexpr const u32 White = 0xFFFFFFFF;
     constexpr const u32 Red = 0xFF0000FF;
+    constexpr const u32 PaintRed = 0XFF241CED;
     constexpr const u32 Green = 0xFF00FF00;
     constexpr const u32 Blue = 0xFFFF0000;
     constexpr const u32 Black = 0xFF000000;
@@ -354,6 +362,10 @@ struct Grid
         // Same can be done trivially for vertical lerp
 
         // Do scaling here
+        if (!IsPow2(scaleFactor))
+        {
+
+        }
         return true;
     }
 
@@ -743,6 +755,7 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
     return true;
 }
 
+#ifndef CATCH_CONFIG_MAIN
 int main(void)
 {
     #if 0
@@ -794,13 +807,14 @@ int main(void)
     std::unordered_map<u32, Constraint> colorMap;
     colorMap.emplace(Color::Black, std::make_pair(ConstraintType::CONSTANT, 0.0));
     colorMap.emplace(Color::Red, std::make_pair(ConstraintType::CONSTANT, 10.0));
+    colorMap.emplace(Color::PaintRed, std::make_pair(ConstraintType::CONSTANT, 10.0));
     colorMap.emplace(Color::Blue, std::make_pair(ConstraintType::CONSTANT, -10.0));
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
     // Grid grid("prob1.png", colorMap);
     Grid grid;
-    grid.LoadFromImage("prob1.png", colorMap);
+    grid.LoadFromImage("prob0.png", colorMap);
 
-    SolveGridLaplacianZero(&grid, 0.00001, 10000);
+    SolveGridLaplacianZero(&grid, 0.001, 10000);
 
     const f64 cellsToMeters = 100.0;
     GradientGrid grad;
@@ -811,9 +825,10 @@ int main(void)
     WriteGnuplotContourFile(grid);
 
     WriteGradientGridForGnuplot(grad);
-    WriteGnuplotGradientFile(grad, 0.02);
+    WriteGnuplotGradientFile(grad, 0.08);
 
     #endif
 
     return 0;
 }
+#endif
