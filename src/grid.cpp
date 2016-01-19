@@ -131,9 +131,6 @@ public:
                                                 }
                                           });
 
-
-
-
         x = sizeX;
         y = sizeY;
         n = sizeN;
@@ -245,18 +242,17 @@ struct Grid
     Grid& operator=(const Grid&) = default;
     Grid& operator=(Grid&&) = default;
 
-    // Image loading constructor
     // TODO(Chris): Add scaling (super/sub-sampling)
-    Grid(const char* imagePath, const std::unordered_map<u32, Constraint> colorMapping)
+    /// Initialise grid from image
+    bool
+    LoadFromImage(const char* imagePath, const std::unordered_map<u32, Constraint>& colorMapping)
     {
         const Jasnah::Option<Image> image = LoadImage(imagePath, 4);
         if (!image)
         {
             LOG("Loading failed");
-            // TODO(Chris): Don't have this as a constructor, it can't
-            // return an error, only throw
-            throw std::invalid_argument("Bad path or something");
-            return;
+            // throw std::invalid_argument("Bad path or something");
+            return false;
         }
 
         ImageInfo info = image->GetInfo();
@@ -308,7 +304,7 @@ struct Grid
 
         // Assuming only one horizontal lerp colour
         auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
-                                      [](decltype(colorMapping)::value_type val)
+                                      [](std::remove_reference<decltype(colorMapping)>::type::value_type val)
                                       {
                                           return val.second.first == ConstraintType::LERP_HORIZ;
                                       });
@@ -356,6 +352,7 @@ struct Grid
         // Same can be done trivially for vertical lerp
 
         // Do scaling here
+        return true;
     }
 
     /// Sets the two boundary plates for the basic box
@@ -516,7 +513,6 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
         for (uint y = 1; y < grid->numLines - 1; ++y)
             for (uint x = 1; x < grid->lineLength - 1; ++x)
             {
-                const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
                 const MemIndex index = y * grid->lineLength + x;
 
                 const auto found = std::find_if(grid->fixedPoints.begin(), grid->fixedPoints.end(),
@@ -532,6 +528,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                 }
                 else
                 {
+                    const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
                     grid->voltages[index] = newVal;
 
                     const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
@@ -797,7 +794,9 @@ int main(void)
     colorMap.emplace(Color::Red, std::make_pair(ConstraintType::CONSTANT, 10.0));
     colorMap.emplace(Color::Blue, std::make_pair(ConstraintType::CONSTANT, -10.0));
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
-    Grid grid("prob1.png", colorMap);
+    // Grid grid("prob1.png", colorMap);
+    Grid grid;
+    grid.LoadFromImage("prob1.png", colorMap);
 
     SolveGridLaplacianZero(&grid, 0.00001, 10000);
 
