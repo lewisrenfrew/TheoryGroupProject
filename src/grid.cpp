@@ -206,7 +206,7 @@ typedef std::pair<ConstraintType, f64> Constraint;
 /// v1 and v2, useful for some boundary conditions (top and bottom of
 /// finite lengths in problem 1)
 DoubleVec
-LerpNPointsBetweenVoltages(f64 v1, f64 v2, uint numPoints)
+LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
 {
     // Set x0 as first point, field has potential v1 here, and v2 at
     // xn. We can interpolate them with the equation of a line:
@@ -360,7 +360,7 @@ struct Grid
 
     /// Sets the two boundary plates for the basic box
     void
-    InitialiseBasicGrid(f64 plusWall, f64 minusWall)
+    InitialiseBasicGrid(const f64 plusWall, const f64 minusWall)
     {
         voltages.assign(lineLength*numLines, 0.0);
 
@@ -404,7 +404,7 @@ struct Grid
 
     /// Fixes this grid's point x, y to val for the duration of this grid
     void
-    AddFixedPoint(uint x, uint y, f64 val)
+    AddFixedPoint(const uint x, const uint y, const f64 val)
     {
         const uint index = y * lineLength + x;
         auto found = std::find_if(fixedPoints.begin(), fixedPoints.end(),
@@ -442,7 +442,7 @@ public:
     /// Calculate and store the negative gradient (i.e. the E-field
     /// from the potential)
     void
-    CalculateNegGradient(const Grid& grid)
+    CalculateNegGradient(const Grid& grid, const f64 cellsToMeters)
     {
         // Currently using the symmetric derivative method over the
         // inside of the grid: f'(a) ~ (f(a+h) - f(a-h)) / 2h. As we
@@ -470,8 +470,8 @@ public:
         for (uint y = 1; y < numLines - 1; ++y)
             for (uint x = 1; x < lineLength - 1; ++ x)
             {
-                const f64 xDeriv = (Phi(x+1, y) - Phi(x-1, y)) / 2.0;
-                const f64 yDeriv = (Phi(x, y+1) - Phi(x, y-1)) / 2.0;
+                const f64 xDeriv = (Phi(x+1, y) - Phi(x-1, y)) / (2.0 / cellsToMeters);
+                const f64 yDeriv = (Phi(x, y+1) - Phi(x, y-1)) / (2.0 / cellsToMeters);
 
                 gradients[y * lineLength + x] = V2d(-xDeriv, -yDeriv);
             }
@@ -483,7 +483,7 @@ public:
 /// change over one iteration is less zeroTol or maxIter iterations
 /// have taken place.
 void
-SolveGridLaplacianZero(Grid* grid, f64 zeroTol, u64 maxIter)
+SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 {
     // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
     // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
@@ -595,9 +595,10 @@ WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat")
 /// with lines
 bool
 WriteGradientGridForGnuplot(const GradientGrid& grid,
-                            uint stepSize = 2,
+                            const uint stepSize = 2,
                             const char* filename = "Plot/GradientGrid.dat")
 {
+#define GRADIENT_DEBUG
     FILE* file = fopen(filename, "w");
     if (!file)
     {
@@ -605,6 +606,15 @@ WriteGradientGridForGnuplot(const GradientGrid& grid,
     }
 
     JasUnpack(grid, gradients, numLines, lineLength);
+
+#ifdef GRADIENT_DEBUG
+    auto VecNorm = [](const V2d& vec) -> f64
+        {
+            return std::sqrt(vec.x*vec.x + vec.y*vec.y);
+        };
+
+    f64 maxNorm = 0.0;
+#endif
 
     for (uint y = 0; y < numLines; ++y)
     {
@@ -616,6 +626,12 @@ WriteGradientGridForGnuplot(const GradientGrid& grid,
             if (x % stepSize == 0)
                 continue;
 
+#ifdef GRADIENT_DEBUG
+            f64 norm = VecNorm(gradients[y * lineLength + x]);
+            if (norm > maxNorm)
+                maxNorm = norm;
+#endif
+
             fprintf(file, "%u %u %f %f\n", x, y,
                     gradients[y * lineLength + x].x,
                     gradients[y * lineLength + x].y);
@@ -624,6 +640,10 @@ WriteGradientGridForGnuplot(const GradientGrid& grid,
     }
 
     fclose(file);
+
+#ifdef GRADIENT_DEBUG
+    LOG("Max norm: %f", maxNorm);
+#endif
     return true;
 }
 
@@ -672,6 +692,7 @@ WriteGnuplotContourFile(const Grid& grid,
     fprintf(file, "set terminal png size 1280,720\n"
             "load 'Plot/MorelandColors.plt'\n"
             "set output \"GridContour.png\"\n"
+            "set key outside\n"
             "set view map\n"
             "unset surface\n"
             "set contour base\n"
@@ -681,7 +702,8 @@ WriteGnuplotContourFile(const Grid& grid,
             "set xrange [0:%u]; set yrange [0:%u]\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
-            "splot \"%s\" with lines title \"\"",
+            "splot \"%s\" with lines title \"\"\n"
+            "set key default\n",
             grid.lineLength-1,
             grid.numLines-1,
             gridDataFile);
@@ -694,7 +716,7 @@ WriteGnuplotContourFile(const Grid& grid,
 // the vectors
 bool
 WriteGnuplotGradientFile(const GradientGrid& grid,
-                         f64 scaling = 2.5,
+                         const f64 scaling = 2.5,
                          const char* gridDataFile = "Plot/GradientGrid.dat",
                          const char* filename = "Plot/PlotGradient.gpi")
 {
@@ -710,7 +732,7 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
             "set style data lines\n"
-            "set title \"E-field (needs scale) (V/m)\"\n"
+            "set title \"E-field (V/m)\"\n"
             "scaling = %f\n"
             "plot \"%s\" using 1:2:($3*scaling):($4*scaling):(sqrt($3*$3+$4*$4)) with vectors"
             " filled lc palette title \"\"",
@@ -777,17 +799,18 @@ int main(void)
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
     Grid grid("prob1.png", colorMap);
 
-    SolveGridLaplacianZero(&grid, 0.001, 10000);
+    SolveGridLaplacianZero(&grid, 0.00001, 10000);
 
+    const f64 cellsToMeters = 100.0;
     GradientGrid grad;
-    grad.CalculateNegGradient(grid);
+    grad.CalculateNegGradient(grid, cellsToMeters);
 
     WriteGridForGnuplot(grid);
     WriteGnuplotColormapFile(grid);
     WriteGnuplotContourFile(grid);
 
     WriteGradientGridForGnuplot(grad);
-    WriteGnuplotGradientFile(grad);
+    WriteGnuplotGradientFile(grad, 0.02);
 
     #endif
 
