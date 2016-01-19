@@ -245,7 +245,9 @@ struct Grid
     // TODO(Chris): Add scaling (super/sub-sampling)
     /// Initialise grid from image
     bool
-    LoadFromImage(const char* imagePath, const std::unordered_map<u32, Constraint>& colorMapping)
+    LoadFromImage(const char* imagePath,
+                  const std::unordered_map<u32, Constraint>& colorMapping,
+                  const uint scaleFactor = 1)
     {
         const Jasnah::Option<Image> image = LoadImage(imagePath, 4);
         if (!image)
