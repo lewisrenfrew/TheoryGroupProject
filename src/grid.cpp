@@ -568,74 +568,125 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
     //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
     // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
+    // NOTE(Chris): Here we assume that the number of fixed points is
+    // significantly smaller than the normal points
+    JasUnpack((*grid), voltages, numLines, lineLength, fixedPoints);
+    std::vector<std::pair<uint, uint> > coordRange; // non-fixed points
+    coordRange.reserve(numLines*lineLength);
+
+    for (uint y = 0; y < numLines; ++y)
+        for (uint x = 0; x < lineLength; ++x)
+        {
+            if (fixedPoints.count(y * lineLength + x) == 0)
+                coordRange.push_back(std::make_pair(x, y));
+        }
+    const decltype(coordRange)& cRange = coordRange;
+
+    DoubleVec prevVoltages(voltages);
+
+    std::vector<std::remove_reference<decltype(fixedPoints)>::type::value_type>fixedVals;
+    fixedVals.reserve(fixedPoints.size());
+    for (const auto& i : fixedPoints)
+    {
+        fixedVals.push_back(i);
+    }
+    const decltype(fixedVals)& fixed = fixedVals;
+
     for (u64 i = 0; i < maxIter; ++i)
     {
 
         // TODO(Chris): If we get hit by slowdown due to the memory
         // allocator (possible on big grids), then implement double
-        // buffering
-        const DoubleVec prevVoltages(grid->voltages);
-        const decltype(prevVoltages)* pVoltage = &prevVoltages;
+        // buffering - done
+        std::swap(prevVoltages, voltages);
+        const decltype(prevVoltages)& pVoltage = prevVoltages;
 
         // Lambda returning Phi(x,y)
         const auto Phi = [grid, pVoltage](uint x, uint y) -> const f64
             {
-                return (*pVoltage)[y * grid->lineLength + x];
+                return pVoltage[y * grid->lineLength + x];
             };
+
+        const auto E = cRange.end();
 
 #ifndef GOMP
         f64 maxErr = 0.0;
+        uint maxIndex = 0;
 #else
         std::atomic<f64> maxErr(0.0);
-#pragma omp parallel for default(none) shared(grid, maxErr)
+        std::atomic<uint> maxIndex(0);
+#pragma omp parallel for default(none) shared(voltages, maxErr, maxIndex, cRange, lineLength)
 #endif
 
         // Loop over array and apply scheme at each point
-        for (uint y = 1; y < grid->numLines - 1; ++y)
+        // for (uint y = 1; y < grid->numLines - 1; ++y)
+        // {
+        //     f64 innerMaxErr = 0.0;
+
+        //     for (uint x = 1; x < grid->lineLength - 1; ++x)
+        //     {
+
+        // TODO(Chris): Need to chunk the range to use threading
+        // effectively, otherwise the atomic compares slow it down.
+        // Chunks of about 10k?
+        // TODO(Chris): SIMD?
+        for (auto coord = cRange.begin(); coord < E; ++coord)
         {
-            f64 innerMaxErr = 0.0;
+            const uint x = coord->first;
+            const uint y = coord->second;
 
-            for (uint x = 1; x < grid->lineLength - 1; ++x)
-            {
-                const MemIndex index = y * grid->lineLength + x;
+            const MemIndex index = y * lineLength + x;
 
-                auto found = grid->fixedPoints.find(index);
+            const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
 
-                if (found != grid->fixedPoints.end())
-                {
-                    grid->voltages[index] = found->second;
-                    // NOTE(Chris): No error on fixed points
-                }
-                else
-                {
-                    const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
+            voltages[index] = newVal;
 
-                    grid->voltages[index] = newVal;
+            // TODO(Chris): Can we lose the costly division somewhere?
+            // const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
+            const f64 absErr = Square((Phi(x,y) - newVal));
+            // Dividing by the old value (Phi) is often dividing
+            // by 0 => infinite err, this will converge towards
+            // the relErr
 
-                    // TODO(Chris): Can we lose the costly division somewhere?
-                    const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
-                    // Dividing by the old value (Phi) is often dividing
-                    // by 0 => infinite err, this will converge towards
-                    // the relErr
-
-                    // TODO(Chris): This is merking performance in
-                    // multi-core, store for each row then single
-                    // thread select over it? - I assume it's this
-                    // anyway
-                    if (absErr > innerMaxErr)
-                    {
-                        innerMaxErr = absErr;
-                    }
-                }
-            }
+            // TODO(Chris): This is merking performance in
+            // multi-core, store for each row then single
+            // thread select over it? - I assume it's this
+            // anyway - kinda was, kinda wasn't
+            // if (absErr > innerMaxErr)
+            // {
+            //     innerMaxErr = absErr;
+            // }
+            // }
 
             // Reduce number of atomic operations (costly due to memory safety)
-            if (innerMaxErr > maxErr)
+            // if (innerMaxErr > maxErr)
+            // {
+            //     maxErr = innerMaxErr;
+            // }
+            if (absErr > maxErr)
             {
-                maxErr = innerMaxErr;
+                maxErr = absErr;
+                maxIndex = index;
             }
 
         }
+
+//         const auto E = grid->fixedPoints.end();
+//         for (auto iter = grid->fixedPoints.begin();
+//              iter != E;
+//              ++iter)
+        const MemIndex fSize = fixed.size();
+#ifdef GOMP
+#pragma omp parallel for default(none) shared(voltages, fixed)
+#endif
+        for (uint iter = 0; iter < fSize; ++iter)
+            // OpenMP requires classic loop style :(
+        {
+            voltages[fixed[iter].first] = fixed[iter].second;
+        }
+
+        maxErr = sqrt(maxErr);
+        maxErr = maxErr / std::abs(voltages[maxIndex]); // need to write like this for the atomic
 
         // Log iteration number and error
 #ifndef GOMP
