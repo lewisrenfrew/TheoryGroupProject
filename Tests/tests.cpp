@@ -45,3 +45,22 @@ TEST_CASE( "Linear Interpolation", "[LerpNPointsBetweenVoltages]")
     REQUIRE( LerpNPointsBetweenVoltages(-1, 1, 3) == vec5);
 
 }
+
+TEST_CASE( "squares are computed", "[square]" )
+{
+    REQUIRE(Square(0) == 0);
+    REQUIRE(Square(-7.00005) == 49.0007000025 );
+    REQUIRE(Square(1) == 1 );
+    REQUIRE(Square(59) == 3481 );
+    REQUIRE(Square(-100.76) == 10152.5776 );
+}
+
+
+TEST_CASE( "check initialising ImmageInfo structure", "[immageinfo]" )
+{
+    ImageInfo image1(10,100,5,7);
+    REQUIRE(image1.pxPerLine ==10);
+    REQUIRE(image1.numScanlines ==100);
+    REQUIRE(image1.numComponents==5);
+    REQUIRE(image1.fileNumComponents==7);
+}
