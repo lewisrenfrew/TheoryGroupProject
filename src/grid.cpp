@@ -845,9 +845,7 @@ SolveGridLaplacianZeroParallel(Grid* grid, const f64 zeroTol, const u64 maxIter)
         {
             if (fixedPoints.count(y * lineLength + x) == 0)
             {
-                // coordRange.push_back(CoordStencil(x, y, lineLength));
                 coordRange.push_back(y * lineLength + x);
-                // coordRange.push_back(std::make_pair(x, y));
             }
         }
     const decltype(coordRange)& cRange = coordRange;
