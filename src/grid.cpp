@@ -19,6 +19,44 @@
 #include <atomic>
 #include <unordered_map>
 
+#ifdef CATCH_CONFIG_MAIN
+#define LOG
+#else
+// NOTE(Chris): Provide logging for everyone - create in main TU to
+// avoid ordering errors, maybe reduce number of TU's...
+namespace Log
+{
+    Lethani::Logfile log;
+}
+#endif
+
+#if 0
+// Scary inline assembly for profiling
+static void
+Escape(void* p)
+{
+    asm volatile("" : : "g"(p) : "memory");
+}
+
+static void
+Clobber()
+{
+    asm volatile("" : : : "memory");
+}
+#endif
+
+
+// http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+inline
+bool
+IsPow2(uint val)
+{
+    return val && !(val & (val - 1));
+}
+
+template <typename T>
+inline constexpr
+T Square(T val) { return val * val; }
 
 typedef std::vector<f64> DoubleVec;
 
@@ -47,13 +85,6 @@ struct V2
 };
 
 typedef V2<f64> V2d;
-
-// NOTE(Chris): Provide logging for everyone - create in main TU to
-// avoid ordering errors, maybe reduce number of TU's...
-namespace Log
-{
-    Lethani::Logfile log;
-}
 
 /// Convert easily between 32-bit RGBA and individual components
 union RGBA
@@ -131,9 +162,6 @@ public:
                                               }
                                           });
 
-
-
-
         x = sizeX;
         y = sizeY;
         n = sizeN;
@@ -183,6 +211,7 @@ namespace Color
     // AABBGGRR
     constexpr const u32 White = 0xFFFFFFFF;
     constexpr const u32 Red = 0xFF0000FF;
+    constexpr const u32 PaintRed = 0XFF241CED;
     constexpr const u32 Green = 0xFF00FF00;
     constexpr const u32 Blue = 0xFFFF0000;
     constexpr const u32 Black = 0xFF000000;
@@ -212,8 +241,12 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
     // xn. We can interpolate them with the equation of a line:
     // a*xi+b = vi but we let xi = 0 then WLOG b = v1, a = (v2-v1)/(numPts-1)
 
-    f64 a = (v2 - v1)/(f64)(numPoints-1);
-    f64 b = v1;
+    // We need at least 2 points between 2 voltages
+    if (numPoints < 2)
+        return DoubleVec();
+
+    const f64 a = (v2 - v1)/(f64)(numPoints-1);
+    const f64 b = v1;
 
     DoubleVec result;
     result.reserve(numPoints);
@@ -226,8 +259,9 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
 
 /// Stores the state of the grid. This API will be VERY prone to
 /// breakage for now
-struct Grid
+class Grid
 {
+public:
     /// Stores the voltage for each cell
     DoubleVec voltages;
     /// Width of the simulation area
@@ -235,7 +269,8 @@ struct Grid
     /// Height of the simulation area
     uint numLines;
     /// Stores the indices and values of the fixed points
-    std::vector<std::pair<MemIndex, f64> > fixedPoints;
+    // std::vector<std::pair<MemIndex, f64> > fixedPoints;
+    std::unordered_map<MemIndex, f64> fixedPoints;
 
     /// Default constructors and assignment operators to keep
     /// everything working
@@ -245,18 +280,19 @@ struct Grid
     Grid& operator=(const Grid&) = default;
     Grid& operator=(Grid&&) = default;
 
-    // Image loading constructor
     // TODO(Chris): Add scaling (super/sub-sampling)
-    Grid(const char* imagePath, const std::unordered_map<u32, Constraint> colorMapping)
+    /// Initialise grid from image
+    bool
+    LoadFromImage(const char* imagePath,
+                  const std::unordered_map<u32, Constraint>& colorMapping,
+                  uint scaleFactor = 1)
     {
         const Jasnah::Option<Image> image = LoadImage(imagePath, 4);
         if (!image)
         {
             LOG("Loading failed");
-            // TODO(Chris): Don't have this as a constructor, it can't
-            // return an error, only throw
-            throw std::invalid_argument("Bad path or something");
-            return;
+            // throw std::invalid_argument("Bad path or something");
+            return false;
         }
 
         ImageInfo info = image->GetInfo();
@@ -291,7 +327,7 @@ struct Grid
                         AddFixedPoint(xLoc, yLoc, iter->second.second); // Yes, this reeks of hack for now
                         break;
                     case ConstraintType::OUTSIDE:
-                        // Do nothing
+                        // Do nothing - maybe set to constant 0?
                         break;
                     case ConstraintType::LERP_HORIZ:
                         // Need to scan and handle these later
@@ -307,8 +343,9 @@ struct Grid
             }
 
         // Assuming only one horizontal lerp colour
+        // TODO(Chris): Make this check more rigourous
         auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
-                                      [](decltype(colorMapping)::value_type val)
+                                      [](std::remove_reference<decltype(colorMapping)>::type::value_type val)
                                       {
                                           return val.second.first == ConstraintType::LERP_HORIZ;
                                       });
@@ -356,6 +393,50 @@ struct Grid
         // Same can be done trivially for vertical lerp
 
         // Do scaling here
+        if (!IsPow2(scaleFactor) && scaleFactor != 0)
+        {
+            LOG("Image scale factor must be a power of 2 and non-zero, ignoring");
+            scaleFactor = 1;
+        }
+
+        if (scaleFactor != 1)
+        {
+            DoubleVec scaledImage;
+            // Reserve new size
+            // scaledImage.reserve(Square(scaleFactor) * voltages.size());
+
+            // Set new dimensions
+            numLines *= scaleFactor;
+            lineLength *= scaleFactor;
+
+            // set new image to 0
+            scaledImage.assign(numLines * lineLength, 0.0);
+
+            std::swap(voltages, scaledImage);
+
+            // Assign scaled fixed points from previous fixed points
+            decltype(fixedPoints) fp;
+            std::swap(fixedPoints, fp);
+
+            for (uint y = 0; y < numLines; ++y)
+            {
+                for (uint x = 0; x < lineLength; ++x)
+                {
+                    // unscaled is the index that this point had in the original unscaled image
+                    const uint unscaled = y / scaleFactor * lineLength / scaleFactor + x / scaleFactor;
+
+                    // See if unscaled is in the list of fixed points
+                    auto found = fp.find(unscaled);
+
+                    // If it is add (x,y) to the new list of fixed points
+                    if (found != fp.end())
+                    {
+                        AddFixedPoint(x, y, found->second);
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     /// Sets the two boundary plates for the basic box
@@ -407,11 +488,7 @@ struct Grid
     AddFixedPoint(const uint x, const uint y, const f64 val)
     {
         const uint index = y * lineLength + x;
-        auto found = std::find_if(fixedPoints.begin(), fixedPoints.end(),
-                                  [index, this](decltype(fixedPoints.front()) val)
-                                  {
-                                      return val.first == index;
-                                  });
+        auto found = fixedPoints.find(index);
 
         if (found != fixedPoints.end())
         {
@@ -419,7 +496,8 @@ struct Grid
         }
 
         voltages[index] = val;
-        fixedPoints.push_back(std::make_pair(index, val));
+        // fixedPoints.push_back(std::make_pair(index, val));
+        fixedPoints.emplace(std::make_pair(index, val));
     }
 };
 
@@ -514,16 +592,14 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 
         // Loop over array and apply scheme at each point
         for (uint y = 1; y < grid->numLines - 1; ++y)
+        {
+            f64 innerMaxErr = 0.0;
+
             for (uint x = 1; x < grid->lineLength - 1; ++x)
             {
-                const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
                 const MemIndex index = y * grid->lineLength + x;
 
-                const auto found = std::find_if(grid->fixedPoints.begin(), grid->fixedPoints.end(),
-                                                [index](decltype(grid->fixedPoints.front()) val)
-                                                {
-                                                    return val.first == index;
-                                                });
+                auto found = grid->fixedPoints.find(index);
 
                 if (found != grid->fixedPoints.end())
                 {
@@ -532,8 +608,11 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                 }
                 else
                 {
+                    const f64 newVal = 0.25 * (Phi(x+1, y) + Phi(x-1, y) + Phi(x, y+1) + Phi(x, y-1));
+
                     grid->voltages[index] = newVal;
 
+                    // TODO(Chris): Can we lose the costly division somewhere?
                     const f64 absErr = std::abs((Phi(x,y) - newVal)/newVal);
                     // Dividing by the old value (Phi) is often dividing
                     // by 0 => infinite err, this will converge towards
@@ -543,14 +622,20 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
                     // multi-core, store for each row then single
                     // thread select over it? - I assume it's this
                     // anyway
-                    if (absErr > maxErr)
+                    if (absErr > innerMaxErr)
                     {
-                        maxErr = absErr;
+                        innerMaxErr = absErr;
                     }
                 }
-
-
             }
+
+            // Reduce number of atomic operations (costly due to memory safety)
+            if (innerMaxErr > maxErr)
+            {
+                maxErr = innerMaxErr;
+            }
+
+        }
 
         // Log iteration number and error
 #ifndef GOMP
@@ -660,16 +745,23 @@ WriteGnuplotColormapFile(const Grid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"Grid.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"Grid.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"Grid.png\"\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
             "plot \"%s\" with image title \"Numeric Solution\"",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             gridDataFile);
 
     fclose(file);
@@ -689,9 +781,14 @@ WriteGnuplotContourFile(const Grid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"GridContour.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"GridContour.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"GridContour.png\"\n"
             "set key outside\n"
             "set view map\n"
             "unset surface\n"
@@ -700,12 +797,14 @@ WriteGnuplotContourFile(const Grid& grid,
             "set cntrparam levels auto 20\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"Stable Potential (V)\"\n"
             "splot \"%s\" with lines title \"\"\n"
             "set key default\n",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             gridDataFile);
 
     return true;
@@ -726,72 +825,81 @@ WriteGnuplotGradientFile(const GradientGrid& grid,
         return false;
     }
 
-    fprintf(file, "set terminal png size 1280,720\n"
+    JasUnpack(grid, lineLength, numLines);
+
+    fprintf(file,
+            // "set terminal pngcairo size 2560,1440\n"
+            // "set output \"GradientGrid.png\"\n"
+            "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"GradientGrid.html\"\n"
             "load 'Plot/MorelandColors.plt'\n"
-            "set output \"GradientGrid.png\"\n"
             "set xlabel \"x\"\nset ylabel \"y\"\n"
             "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
             "set style data lines\n"
             "set title \"E-field (V/m)\"\n"
             "scaling = %f\n"
             "plot \"%s\" using 1:2:($3*scaling):($4*scaling):(sqrt($3*$3+$4*$4)) with vectors"
             " filled lc palette title \"\"",
-            grid.lineLength-1,
-            grid.numLines-1,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
             scaling,
             gridDataFile);
 
     return true;
 }
 
+#if 0
 struct CommandLineFlags
 {
     bool lastMatrix;
     std::string infofilepath;
-}
+};
 
 
-    CommandLineFlags ParseArguments()
+CommandLineFlags ParseArguments()
+{
+    try
     {
-        try
+        // Aguments are in order: discription, seperation char, version number.
+        TCLAP::CmdLine cmd("Solving the electric and the voltage fields of a electrostatic prblem ",
+                           ' ', Version::Gridle);
+
+        // Aguments are in order: '-' flag, "--" flag,
+        // discription,add to an object(cmd line), default state.
+        TCLAP::SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used",
+                                    cmd,false);
+
+        // Aguments are in order: '-' flag, "--" flag,
+        // discription, default state, default string value , path, add to an object(cmd line).
+        TCLAP::ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
+                                              true, "", "path", cmd);
+
+        CommandLineFlags ret;
+
+        ret.lastMatrix = lastMatrix.getValue();
+        ret.infofilepath = infofile.getValue();
+
+        if(lastMatrix)
         {
-            // Aguments are in order: discription, seperation char, version number. 
-            TCLAP::CmdLine cmd("Solving the electric and the voltage fields of a electrostatic prblem ",
-                               ' ', Version::Gridle);
-	  
-            // Aguments are in order: '-' flag, "--" flag,
-            // discription,add to an object(cmd line), default state.
-            TCLAP::SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used",
-                                        cmd,false);
-	  
-            // Aguments are in order: '-' flag, "--" flag,
-            // discription, default state, default string value , path, add to an object(cmd line).
-            TCLAP::ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
-                                                  true, "", "path", cmd);
-	  
-            CommandLineFlags ret;
-
-            ret.lastMatrix = lastMatrix.getValue();
-            ret.infofilepath = infofile.getValue();
-	  
-            if(lastMatrix)
-            {
-                //TODO, get the previous matrix
-            }
-            else
-            {
-                //TODO,
-            }
-
-
+            //TODO, get the previous matrix
         }
-        catch(TCLAP::ArgException& ex)
+        else
         {
-            LOG("Parsing error %s for arg %s", ex.error().c_str(), ex.argId().c_str());
+            //TODO,
         }
+
+
     }
+    catch(TCLAP::ArgException& ex)
+    {
+        LOG("Parsing error %s for arg %s", ex.error().c_str(), ex.argId().c_str());
+    }
+}
+#endif
 
-
+#ifndef CATCH_CONFIG_MAIN
 int main(void)
 {
 #if 0
@@ -843,11 +951,14 @@ int main(void)
     std::unordered_map<u32, Constraint> colorMap;
     colorMap.emplace(Color::Black, std::make_pair(ConstraintType::CONSTANT, 0.0));
     colorMap.emplace(Color::Red, std::make_pair(ConstraintType::CONSTANT, 10.0));
+    colorMap.emplace(Color::PaintRed, std::make_pair(ConstraintType::CONSTANT, 10.0));
     colorMap.emplace(Color::Blue, std::make_pair(ConstraintType::CONSTANT, -10.0));
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
-    Grid grid("prob1.png", colorMap);
+    // Grid grid("prob1.png", colorMap);
+    Grid grid;
+    grid.LoadFromImage("prob1.png", colorMap, 2);
 
-    SolveGridLaplacianZero(&grid, 0.00001, 10000);
+    SolveGridLaplacianZero(&grid, 0.001, 10000);
 
     const f64 cellsToMeters = 100.0;
     GradientGrid grad;
@@ -858,9 +969,10 @@ int main(void)
     WriteGnuplotContourFile(grid);
 
     WriteGradientGridForGnuplot(grad);
-    WriteGnuplotGradientFile(grad, 0.02);
+    WriteGnuplotGradientFile(grad, 0.08);
 
 #endif
 
     return 0;
 }
+#endif
