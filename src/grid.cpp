@@ -24,6 +24,10 @@
 #include <omp.h>
 #endif
 
+// Taken from Linux Kernel, for hard optimisation
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+
 #ifdef CATCH_CONFIG_MAIN
 #define LOG
 #else
@@ -694,13 +698,13 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
             //     maxErr = innerMaxErr;
             // }
 #ifdef GOMP
-            if (absErr > threadMax)
+            if (unlikely(absErr > threadMax))
             {
                 threadMax = absErr;
                 threadMaxIndex = index;
             }
 #else
-            if (absErr > maxErr)
+            if (unlikely(absErr > maxErr))
             {
                 maxErr = absErr;
                 maxIndex = index;
@@ -709,22 +713,23 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 
         }
 #ifdef GOMP
-        if (threadMax > maxErr)
+        if (threadMax > maxErr) // On most systems this is neither likely nor unlikely, it'll happen < 10 times
         {
             maxErr = threadMax;
             maxIndex = threadMaxIndex;
         }
         }
 #endif
+        // TODO(Chris): Handle Remainders!!!!
 
 //         const auto E = grid->fixedPoints.end();
 //         for (auto iter = grid->fixedPoints.begin();
 //              iter != E;
 //              ++iter)
         const MemIndex fSize = fixed.size();
-#ifdef GOMP
-#pragma omp parallel for default(none) shared(voltages, fixed)
-#endif
+// #ifdef GOMP
+// #pragma omp parallel for default(none) shared(voltages, fixed)
+// #endif
         for (uint iter = 0; iter < fSize; ++iter)
             // OpenMP requires classic loop style :(
         {
@@ -743,7 +748,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 // #endif
 
         // If we have converged, then break
-        if (maxErr < zeroTol)
+        if (unlikely(maxErr < zeroTol))
             break;
     }
 }
