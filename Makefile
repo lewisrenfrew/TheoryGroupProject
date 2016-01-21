@@ -1,6 +1,6 @@
 # CXX=clang++
-# CXX=g++-5
-CXX=g++
+CXX=g++-5
+# CXX=g++
 
 HERE:=$(shell pwd)
 
@@ -9,7 +9,7 @@ SRCEXT=cpp
 SRCDIR=src
 OBJDIR=obj
 BINDIR=bin
-INC=
+INC=$(HERE)/IncludeThird/
 
 CXXFLAGS=-std=c++11 -Wall
 
