@@ -18,6 +18,11 @@
 #include <algorithm>
 #include <atomic>
 #include <unordered_map>
+#include "boost/align.hpp"
+#include <x86intrin.h>
+#ifdef GOMP
+#include <omp.h>
+#endif
 
 #ifdef CATCH_CONFIG_MAIN
 #define LOG
@@ -59,6 +64,9 @@ inline constexpr
 T Square(T val) { return val * val; }
 
 typedef std::vector<f64> DoubleVec;
+// Getting bored of typing this one
+template <typename T>
+using RemRefT = typename std::remove_reference<T>::type;
 
 /// 2D vector type for the gradient stuff
 template <typename T>
@@ -263,7 +271,8 @@ class Grid
 {
 public:
     /// Stores the voltage for each cell
-    DoubleVec voltages;
+    // DoubleVec voltages;
+    std::vector<f64, boost::alignment::aligned_allocator<f64, 32> > voltages;
     /// Width of the simulation area
     uint lineLength;
     /// Height of the simulation area
@@ -345,7 +354,7 @@ public:
         // Assuming only one horizontal lerp colour
         // TODO(Chris): Make this check more rigourous
         auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
-                                      [](std::remove_reference<decltype(colorMapping)>::type::value_type val)
+                                      [](RemRefT<decltype(colorMapping)>::value_type val)
                                       {
                                           return val.second.first == ConstraintType::LERP_HORIZ;
                                       });
@@ -401,7 +410,8 @@ public:
 
         if (scaleFactor != 1)
         {
-            DoubleVec scaledImage;
+            // DoubleVec scaledImage;
+            decltype(voltages) scaledImage;
             // Reserve new size
             // scaledImage.reserve(Square(scaleFactor) * voltages.size());
 
@@ -582,9 +592,10 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
         }
     const decltype(coordRange)& cRange = coordRange;
 
-    DoubleVec prevVoltages(voltages);
+    // DoubleVec prevVoltages(voltages);
+    decltype(grid->voltages) prevVoltages(voltages);
 
-    std::vector<std::remove_reference<decltype(fixedPoints)>::type::value_type>fixedVals;
+    std::vector<RemRefT<decltype(fixedPoints)>::value_type> fixedVals;
     fixedVals.reserve(fixedPoints.size());
     for (const auto& i : fixedPoints)
     {
@@ -592,6 +603,15 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
     }
     const decltype(fixedVals)& fixed = fixedVals;
 
+#ifdef GOMP
+    // Hand-waving 5k as minimum to not be dominated by context switches etc.
+    const uint numThreads = (prevVoltages.size() / omp_get_max_threads() >= 5000)
+        ? omp_get_max_threads()
+        : prevVoltages.size() / 5000;
+    const uint rem = prevVoltages.size() % numThreads;
+    const uint blockSize = (prevVoltages.size() - rem) / numThreads;
+    LOG("Num threads %u, remainders %u", numThreads, rem);
+#endif
     for (u64 i = 0; i < maxIter; ++i)
     {
 
@@ -599,10 +619,10 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
         // allocator (possible on big grids), then implement double
         // buffering - done
         std::swap(prevVoltages, voltages);
-        const decltype(prevVoltages)& pVoltage = prevVoltages;
+        const decltype(grid->voltages)& pVoltage = prevVoltages;
 
         // Lambda returning Phi(x,y)
-        const auto Phi = [grid, pVoltage](uint x, uint y) -> const f64
+        const auto Phi = [&grid, &pVoltage](uint x, uint y) -> f64
             {
                 return pVoltage[y * grid->lineLength + x];
             };
@@ -615,7 +635,7 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
 #else
         std::atomic<f64> maxErr(0.0);
         std::atomic<uint> maxIndex(0);
-#pragma omp parallel for default(none) shared(voltages, maxErr, maxIndex, cRange, lineLength)
+#pragma omp parallel for default(none) shared(cRange, lineLength, voltages, maxErr, maxIndex)
 #endif
 
         // Loop over array and apply scheme at each point
@@ -630,7 +650,17 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
         // effectively, otherwise the atomic compares slow it down.
         // Chunks of about 10k?
         // TODO(Chris): SIMD?
+#ifdef GOMP
+        for (uint thread = 0; thread < numThreads; ++thread)
+        {
+            f64 threadMax = 0.0;
+            uint threadMaxIndex = 0;
+            const auto start = cRange.begin() + thread * blockSize;
+            const auto end = (start + blockSize > cRange.end()) ? cRange.end() : start + blockSize;
+        for (auto coord = start; coord < end; ++coord)
+#else
         for (auto coord = cRange.begin(); coord < E; ++coord)
+#endif
         {
             const uint x = coord->first;
             const uint y = coord->second;
@@ -663,13 +693,29 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
             // {
             //     maxErr = innerMaxErr;
             // }
+#ifdef GOMP
+            if (absErr > threadMax)
+            {
+                threadMax = absErr;
+                threadMaxIndex = index;
+            }
+#else
             if (absErr > maxErr)
             {
                 maxErr = absErr;
                 maxIndex = index;
             }
+#endif
 
         }
+#ifdef GOMP
+        if (threadMax > maxErr)
+        {
+            maxErr = threadMax;
+            maxIndex = threadMaxIndex;
+        }
+        }
+#endif
 
 //         const auto E = grid->fixedPoints.end();
 //         for (auto iter = grid->fixedPoints.begin();
@@ -689,11 +735,12 @@ SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
         maxErr = maxErr / std::abs(voltages[maxIndex]); // need to write like this for the atomic
 
         // Log iteration number and error
-#ifndef GOMP
-        LOG("Iteration %d, err: %f", i, maxErr);
-#else
-        LOG("Iteration %d, err: %f", i, maxErr.load());
-#endif
+        // NOTE(Chris): SHUT-UP for now
+// #ifndef GOMP
+//         LOG("Iteration %d, err: %f", i, maxErr);
+// #else
+//         LOG("Iteration %d, err: %f", i, maxErr.load());
+// #endif
 
         // If we have converged, then break
         if (maxErr < zeroTol)
@@ -1007,9 +1054,9 @@ int main(void)
     colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
     // Grid grid("prob1.png", colorMap);
     Grid grid;
-    grid.LoadFromImage("prob1.png", colorMap, 2);
+    grid.LoadFromImage("prob1.png", colorMap, 8);
 
-    SolveGridLaplacianZero(&grid, 0.001, 10000);
+    SolveGridLaplacianZero(&grid, 0.0001, 10000);
 
     const f64 cellsToMeters = 100.0;
     GradientGrid grad;
