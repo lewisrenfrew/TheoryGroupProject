@@ -62,7 +62,6 @@ endif
 # SDLLIBS=$(shell $(HERE)/third/sdlBuild/bin/sdl2-config --libs)
 # SDLLIBS=$(shell $(HERE)/third/sdlBuild/bin/sdl2-config --static-libs)
 
-## Shouldn't need to modify much below this line other than SDL ##
 INC:=$(addprefix -I,$(INC))
 LIBS:=$(addprefix -l,$(LIBS))
 LIBDIR:=$(addprefix -L,$(LIBDIR))
@@ -75,7 +74,6 @@ LIBS+=
 LDFLAGS+=$(LIBDIR) $(LIBS)
 DEPS:=$(OBJECTS:.o=.d)
 
-## Don't touch below this line ##
 .phony: all clean distclean
 
 all: $(BINDIR)/$(TARGET)
@@ -95,7 +93,7 @@ plot: run
 -include $(DEPS)
 
 $(OBJDIR)/%.o: %.$(SRCEXT)
-	@echo "Generating dependencies for $<..."
+	@echo "Generating dependency list for $<..."
 	@$(call make-depend,$<,$@,$(subst .o,.d,$@))
 	@echo "Compiling $<..."
 	@$(CXX) $(CXXFLAGS) $< -o $@
@@ -109,6 +107,9 @@ distclean: clean
 buildrepo:
 	@$(call make-repo)
 
+# These use gcc/clang's abilities to output makefile requirements for a file,
+# so they generate a depencency list for each file, if for example a header
+# included by that file is changed, then it will be recompiled
 define make-repo
    for dir in $(SRCDIRS); \
    do \
@@ -116,8 +117,6 @@ define make-repo
    done
 endef
 
-
-# usage: $(call make-depend,source-file,object-file,depend-file)
 define make-depend
   $(CXX) -MM       \
          -MF $3    \
