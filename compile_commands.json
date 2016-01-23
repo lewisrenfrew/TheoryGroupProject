@@ -1,25 +1,73 @@
 [
 {
-  "directory": "/home/goobley/LaplaceGrid",
-  "command": "clang++ -MM -MF obj/src/grid.d -MP -MT obj/src/grid.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/LaplaceGrid/IncludeThird/ src/grid.cpp",
-  "file": "/home/goobley/LaplaceGrid/src/grid.cpp"
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/Grid.d -MP -MT obj/src/Grid.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Grid.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/Grid.cpp"
 }
 ,
 {
-  "directory": "/home/goobley/LaplaceGrid",
-  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/LaplaceGrid/IncludeThird/ src/grid.cpp -o obj/src/grid.o",
-  "file": "/home/goobley/LaplaceGrid/src/grid.cpp"
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/main.d -MP -MT obj/src/main.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/main.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/main.cpp"
 }
 ,
 {
-  "directory": "/home/goobley/LaplaceGrid",
-  "command": "clang++ -MM -MF obj/src/Debug/Debug.d -MP -MT obj/src/Debug/Debug.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/LaplaceGrid/IncludeThird/ src/Debug/Debug.cpp",
-  "file": "/home/goobley/LaplaceGrid/src/Debug/Debug.cpp"
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/FDM.d -MP -MT obj/src/FDM.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/FDM.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/FDM.cpp"
 }
 ,
 {
-  "directory": "/home/goobley/LaplaceGrid",
-  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/LaplaceGrid/IncludeThird/ src/Debug/Debug.cpp -o obj/src/Debug/Debug.o",
-  "file": "/home/goobley/LaplaceGrid/src/Debug/Debug.cpp"
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/Debug/Debug.d -MP -MT obj/src/Debug/Debug.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Debug/Debug.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/Debug/Debug.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/Plot.d -MP -MT obj/src/Plot.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Plot.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/Plot.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -MM -MF obj/src/GradientGrid.d -MP -MT obj/src/GradientGrid.o -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/GradientGrid.cpp",
+  "file": "/home/goobley/TheoryGroupProject/src/GradientGrid.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/FDM.cpp -o obj/src/FDM.o",
+  "file": "/home/goobley/TheoryGroupProject/src/FDM.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Grid.cpp -o obj/src/Grid.o",
+  "file": "/home/goobley/TheoryGroupProject/src/Grid.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/GradientGrid.cpp -o obj/src/GradientGrid.o",
+  "file": "/home/goobley/TheoryGroupProject/src/GradientGrid.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Debug/Debug.cpp -o obj/src/Debug/Debug.o",
+  "file": "/home/goobley/TheoryGroupProject/src/Debug/Debug.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/main.cpp -o obj/src/main.o",
+  "file": "/home/goobley/TheoryGroupProject/src/main.cpp"
+}
+,
+{
+  "directory": "/home/goobley/TheoryGroupProject",
+  "command": "clang++ -std=c++11 -Wall -c -O2 -g -march=native -mfpmath=sse -Wall -Wextra -DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer -ftemplate-depth=1024 -I/home/goobley/TheoryGroupProject/IncludeThird/ -I/home/goobley/TheoryGroupProject/IncludeThird/tclap-1.2.1/include/ src/Plot.cpp -o obj/src/Plot.o",
+  "file": "/home/goobley/TheoryGroupProject/src/Plot.cpp"
 }
 ]

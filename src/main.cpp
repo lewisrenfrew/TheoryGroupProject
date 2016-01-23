@@ -1,5 +1,5 @@
 /* ==========================================================================
-   $File: grid.cpp $
+   $File: main.cpp $
    $Version: 1.0 $
    $Notice: (C) Copyright 2015 Chris Osborne. All Rights Reserved. $
    $License: MIT: http://opensource.org/licenses/MIT $
@@ -9,6 +9,8 @@
 #include "Grid.hpp"
 #include "GradientGrid.hpp"
 #include "Plot.hpp"
+#include "JSON.hpp"
+#include <tclap/CmdLine.h>
 
 // NOTE(Chris): It's going to be a bit of work to get tests running
 // again now
@@ -23,7 +25,7 @@ namespace Log
 }
 #endif
 
-#if 0
+#if 1
 struct CommandLineFlags
 {
     bool lastMatrix;
@@ -31,13 +33,15 @@ struct CommandLineFlags
 };
 
 
-CommandLineFlags ParseArguments()
+CommandLineFlags ParseArguments(int argc, const char* argv[])
 {
     try
     {
+        using namespace TCLAP;
+
         // Aguments are in order: discription, seperation char, version number.
-        TCLAP::CmdLine cmd("Solving the electric and the voltage fields of a electrostatic prblem ",
-                           ' ', Version::Gridle);
+        CmdLine cmd("A tool for solving the electric and the voltage fields of an electrostatic problem.",
+                           ' ', Version::VersionNumber);
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription,add to an object(cmd line), default state.
@@ -46,15 +50,17 @@ CommandLineFlags ParseArguments()
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription, default state, default string value , path, add to an object(cmd line).
-        TCLAP::ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
+        ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
                                               true, "", "path", cmd);
+
+        cmd.parse(argc, argv);
 
         CommandLineFlags ret;
 
         ret.lastMatrix = lastMatrix.getValue();
         ret.infofilepath = infofile.getValue();
 
-        if(lastMatrix)
+        if(ret.lastMatrix)
         {
             //TODO, get the previous matrix
         }
@@ -63,6 +69,7 @@ CommandLineFlags ParseArguments()
             //TODO,
         }
 
+        return ret;
 
     }
     catch(TCLAP::ArgException& ex)
@@ -73,26 +80,26 @@ CommandLineFlags ParseArguments()
 #endif
 
 #ifndef CATCH_CONFIG_MAIN
-int main(void)
+int main(int argc, const char* argv[])
 {
-    // This looks better and far more generic
-    std::unordered_map<u32, Constraint> colorMap;
-    colorMap.emplace(Color::Black, std::make_pair(ConstraintType::CONSTANT, 0.0));
-    colorMap.emplace(Color::Red, std::make_pair(ConstraintType::CONSTANT, 10.0));
-    colorMap.emplace(Color::PaintRed, std::make_pair(ConstraintType::CONSTANT, 10.0));
-    colorMap.emplace(Color::Blue, std::make_pair(ConstraintType::CONSTANT, -10.0));
-    colorMap.emplace(Color::Green, std::make_pair(ConstraintType::LERP_HORIZ, 0.0));
-    // Grid grid("prob1.png", colorMap);
+    auto args = ParseArguments(argc, argv);
+    auto cfg = Cfg::LoadGridConfigFile(args.infofilepath.c_str());
+    if (!cfg)
+    {
+        LOG("Cannot understand config file, exiting");
+        return EXIT_FAILURE;
+    }
+
+    JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
+
     Grid grid;
-    grid.LoadFromImage("prob0.png", colorMap, 8);
+    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
     // NOTE(Chris): Staggered leapfrog seems to follow a 1/(x^2) convergence, we can exploit this...
-    // SolveGridLaplacianZero(&grid, 0.0001, 10000);
-    FDM::SolveGridLaplacianZero(&grid, 0.001, 10000);
+    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
-    const f64 cellsToMeters = 100.0;
     GradientGrid grad;
-    grad.CalculateNegGradient(grid, cellsToMeters);
+    grad.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
 
     using namespace Plot;
 
@@ -103,6 +110,6 @@ int main(void)
     WriteGradientGridForGnuplot(grad);
     WriteGnuplotGradientFile(grad, 0.08);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 #endif

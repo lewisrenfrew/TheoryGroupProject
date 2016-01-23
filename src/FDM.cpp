@@ -60,9 +60,10 @@ namespace FDM
         uint errorChunk = 500;
 
         // Hand-waving 10k iterations per thread as minimum to not be dominated by context switches etc.
+        const uint numWorkChunks = (prevVoltages.size() / 10000 > 0) ? prevVoltages.size() / 10000 : 1;
         const uint numThreads = (prevVoltages.size() / omp_get_max_threads() >= 10000)
             ? omp_get_max_threads()
-            : prevVoltages.size() / 10000;
+            : numWorkChunks;
         // remaining points that don't divide between the threads
         const uint rem = prevVoltages.size() % numThreads;
         // size of work chunk for each thread
@@ -72,8 +73,8 @@ namespace FDM
         // Atomic value for concurrent multi-threaded access
         std::atomic<f64> maxErr(0.0);
 
-        // Main loop
-        for (u64 i = 0; i < maxIter; ++i)
+        // Main loop - start with 1 so as not to take slow path on first iter
+        for (u64 i = 1; i <= maxIter; ++i)
         {
             // We will just double buffer these 2 vectors to avoid reallocations new<->old
             std::swap(prevVoltages, voltages);
@@ -226,8 +227,8 @@ namespace FDM
 
         f64 maxErr = 0.0;
 
-        // Main loop
-        for (u64 i = 0; i < maxIter; ++i)
+        // Main loop - start from 1 so as not to calculate error on first iteration
+        for (u64 i = 1; i <= maxIter; ++i)
         {
             // We will just double buffer these 2 vectors to avoid reallocations new<->old
             std::swap(prevVoltages, voltages);

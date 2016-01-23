@@ -9,7 +9,7 @@ SRCEXT=cpp
 SRCDIR=src
 OBJDIR=obj
 BINDIR=bin
-INC=$(HERE)/IncludeThird/
+INC=$(HERE)/IncludeThird/ $(HERE)/IncludeThird/tclap-1.2.1/include/
 
 CXXFLAGS=-std=c++11 -Wall
 

@@ -1,0 +1,8 @@
+{
+    "ImagePath" : "prob0.png",
+    "ColorMapPath" : "cmap.json",
+    "ScaleFactor" : 4,
+    "MinRelErr" : 0.00001,
+    "MaxIterations" : 100000,
+    "PixelsPerMeter" : 100
+}

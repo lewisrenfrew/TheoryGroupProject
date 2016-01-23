@@ -1,0 +1,58 @@
+{
+    "ColorMap" :
+    [
+        {
+            "Type" : "HorizontalLerp",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 255,
+                "b" : 0
+            }
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 255,
+                "g" : 0,
+                "b" : 0
+            },
+            "Value" : 10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 0,
+                "b" : 0
+            },
+            "Value" : 0
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 0,
+                "b" : 255
+            },
+            "Value" : -10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "b" : 36,
+                "g" : 28,
+                "r" : 237
+            },
+            "Value" : 10
+        }
+    ]
+}

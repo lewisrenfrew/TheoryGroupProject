@@ -90,4 +90,26 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
     return result;
 }
 
+typedef u32 HashedName;
+
+
+namespace Impl
+{
+    constexpr HashedName CreateHash(HashedName prevHash, const char* ch)
+    {
+        return *ch == '\0' ? prevHash :
+            CreateHash(*ch + (prevHash << 6) + (prevHash << 16) - prevHash, ch+1);
+
+    }
+}
+
+/// Create 32bit hash from unsigned 8-bit values and initial
+/// hash using the SDBM hash method
+/// Methods are constexpr so can be used in switches
+/// Same hash function as used by Urho3D (just recursive here).
+constexpr HashedName StringHash(const char* str)
+{
+    return Impl::CreateHash(0, str);
+}
+
 #endif
