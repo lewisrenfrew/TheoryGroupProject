@@ -57,7 +57,7 @@ Grid::LoadFromImage(const char* imagePath,
 
     lineLength = pxPerLine;
     numLines = numScanlines;
-    // const u32* rgbaData = (const u32*)data;
+
     const u32* rgbaData = (const u32*)image->GetData();
 
     voltages.assign(pxPerLine * numScanlines, 0.0);
@@ -71,7 +71,7 @@ Grid::LoadFromImage(const char* imagePath,
                 auto iter = colorMapping.find(texel.rgba);
                 if (iter == colorMapping.end())
                 {
-                    LOG("Unknown color %u <%u, %u, %u, %u> encountered at (%u, %u), ignoring",
+                    LOG("Unknown color %u <r%u, g%u, b%u, a%u> encountered at (%u, %u), ignoring",
                         texel.rgba, (unsigned)texel.r, (unsigned)texel.g,
                         (unsigned)texel.b, (unsigned)texel.a, xLoc, yLoc);
 
@@ -81,11 +81,38 @@ Grid::LoadFromImage(const char* imagePath,
                 switch (iter->second.first)
                 {
                 case ConstraintType::CONSTANT:
+                {
                     AddFixedPoint(xLoc, yLoc, iter->second.second); // Yes, this reeks of hack for now
-                    break;
+                } break;
+
                 case ConstraintType::OUTSIDE:
+                {
+                    AddFixedPoint(xLoc, yLoc, 0.0);
                     // Do nothing - maybe set to constant 0?
-                    break;
+                } break;
+
+                // case ConstraintType::ZIP_X:
+                // {
+                //     if (yLoc != 0 && yLoc != numScanlines)
+                //     {
+                //         LOG("Horizontal Zip not in top or bottom row, ignoring");
+                //         continue;
+                //     }
+                //     AddZipPoint(xLoc, yLoc, Constraint::ZIP_X);
+
+                // } break;
+
+                // case ConstraintType::ZIP_Y:
+                // {
+                //     if (xLoc != 0 && xLoc != numScanlines)
+                //     {
+                //         LOG("Vertical Zip not in first or last column, ignoring");
+                //         continue;
+                //     }
+                //     AddZipPoint(xLoc, yLoc, Constraint::ZIP_Y);
+
+                // } break;
+
                 case ConstraintType::LERP_HORIZ:
                     // Need to scan and handle these later
                     break;
@@ -93,21 +120,19 @@ Grid::LoadFromImage(const char* imagePath,
                     // Need to scan and handle these later
                     break;
                 default:
-                    LOG("Not yet implemented");
+                    LOG("Unknown Constraint Type at (%u, %u)", xLoc, yLoc);
                     break;
                 }
             }
         }
 
-    // Assuming only one horizontal lerp colour
-    // TODO(Chris): Make this check more rigourous
     auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
                                   [](RemRefT<decltype(colorMapping)>::value_type val)
                                   {
                                       return val.second.first == ConstraintType::LERP_HORIZ;
                                   });
 
-    if (horizLerp != colorMapping.end())
+    while (horizLerp != colorMapping.end())
     {
         for (uint yLoc = 0; yLoc < numScanlines; ++yLoc)
             for (uint xLoc = 0; xLoc < pxPerLine; ++xLoc)
@@ -118,7 +143,7 @@ Grid::LoadFromImage(const char* imagePath,
                     uint len = 0;
                     const uint maxLen = lineLength - xLoc;
 
-                    while (*texel == horizLerp->first && len <= maxLen)
+                    while (*texel == horizLerp->first && len < maxLen)
                     {
                         ++texel;
                         ++len;
@@ -144,10 +169,74 @@ Grid::LoadFromImage(const char* imagePath,
                     {
                         AddFixedPoint(xLoc - 1 + i, yLoc, lerp[i]);
                     }
+                    xLoc += len+1;
                 }
             }
+
+        // We know we're not pointing at end already, or we wouldn't be here...
+        ++horizLerp;
+        horizLerp = std::find_if(horizLerp, std::end(colorMapping),
+                                 [](RemRefT<decltype(colorMapping)>::value_type val)
+                                 {
+                                     return val.second.first == ConstraintType::LERP_HORIZ;
+                                 });
     }
     // Same can be done trivially for vertical lerp
+    auto verticLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
+                                   [](RemRefT<decltype(colorMapping)>::value_type val)
+                                   {
+                                       return val.second.first == ConstraintType::LERP_VERTIC;
+                                   });
+
+    while (verticLerp != colorMapping.end())
+    {
+        for (uint xLoc = 0; xLoc < pxPerLine; ++xLoc)
+            for (uint yLoc = 0; yLoc < numScanlines; ++yLoc)
+            {
+                const u32* texel = &rgbaData[yLoc * lineLength + xLoc];
+                if (*texel == verticLerp->first)
+                {
+                    uint len = 0;
+                    const uint maxLen = numScanlines - yLoc;
+
+                    while (*texel == verticLerp->first && len < maxLen)
+                    {
+                        texel += lineLength;
+                        ++len;
+                    }
+                    // Texel now points to the pixel following the final lerp pixel
+
+                    // Need a pixel before and after the lerp for boundaries
+                    if (len == maxLen || yLoc == 0)
+                    {
+                        LOG("Lerp specification error, ignoring, make sure\n"
+                            "you have a constant pixel on each side");
+                        // continue outer loop
+                        break;
+                    }
+
+                    // Constants are already set at this point, so use them
+                    std::vector<f64> lerp = LerpNPointsBetweenVoltages(voltages[(yLoc - 1) * lineLength + xLoc],
+                                                                       voltages[(yLoc + len) * lineLength + xLoc],
+                                                                       len + 2);
+
+                    // Set the values
+                    for (uint i = 0; i < len+2; ++i)
+                    {
+                        AddFixedPoint(xLoc, yLoc - 1 + i, lerp[i]);
+                    }
+                    yLoc += len+1;
+                }
+            }
+
+        // We know we're not pointing at end already, or we wouldn't be here...
+        ++verticLerp;
+        verticLerp = std::find_if(verticLerp, std::end(colorMapping),
+                                  [](RemRefT<decltype(colorMapping)>::value_type val)
+                                  {
+                                      return val.second.first == ConstraintType::LERP_VERTIC;
+                                  });
+    }
 
     // Do scaling here
     if (!IsPow2(scaleFactor) && scaleFactor != 0)

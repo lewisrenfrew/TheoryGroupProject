@@ -10,11 +10,13 @@
 
 #include <cmath>
 #include <atomic>
+#include <algorithm>
 
 namespace FDM
 {
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol, const u64 maxIter)
+    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
+                           const u64 maxIter)
     {
         // NOTE(Chris): The only way I can think of to improve this from
         // here is SIMD. But that also poses certain problems, we'd need
@@ -36,14 +38,15 @@ namespace FDM
         // incoming grid using AddFixedPoint)
 
         JasUnpack((*grid), voltages, numLines, lineLength, fixedPoints);
+        JasUnpack((*grid), horizZip, verticZip);
 
         // NOTE(Chris): We choose to trade off some memory for computation
         // speed inside the loop
         std::vector<uint> coordRange; // non fixed points
         coordRange.reserve(numLines*lineLength);
 
-        for (uint y = 0; y < numLines; ++y)
-            for (uint x = 0; x < lineLength; ++x)
+        for (uint y = 1; y < numLines - 1; ++y)
+            for (uint x = 1; x < lineLength - 1; ++x)
             {
                 if (fixedPoints.count(y * lineLength + x) == 0)
                 {
@@ -52,6 +55,111 @@ namespace FDM
             }
         // Make a const ref so we don't mess with the contents
         const decltype(coordRange)& cRange = coordRange;
+
+        if (!verticZip)
+        {
+            // Check first and final column for empty pixels (corners require more specific check)
+            for (uint y = 1; y < numLines - 1; ++y)
+            {
+                if (fixedPoints.count(y * lineLength) == 0
+                    || fixedPoints.count(y * lineLength + lineLength - 1) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+            }
+        }
+
+        if (!horizZip)
+        {
+            // Check first and final row for empty pixels (corners require more specific check)
+            for (uint x = 1; x < lineLength - 1; ++x)
+            {
+                if (fixedPoints.count(x) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength + x) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+            }
+        }
+
+        if (!horizZip || !verticZip)
+        {
+                if (fixedPoints.count(0) == 0
+                    || fixedPoints.count(lineLength - 1) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength + lineLength - 1) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+        }
+
+        std::vector<std::pair<uint, uint> > horizZipPoints;
+        std::vector<std::pair<uint, uint> > verticZipPoints;
+        std::vector<std::pair<uint, uint> > horizAndVerticZipPoints;
+
+        if (horizZip)
+        {
+            horizZipPoints.reserve(2 * lineLength);
+            for (uint x = 1; x < lineLength - 1; ++x)
+            {
+                if (fixedPoints.count(x) == 0)
+                {
+                    horizZipPoints.push_back(std::make_pair(x, 0));
+                }
+
+                if (fixedPoints.count((numLines - 1) * lineLength + x) == 0)
+                {
+                    horizZipPoints.push_back(std::make_pair(x, numLines - 1));
+                }
+            }
+        }
+        // Sort automatically compares first, then second types for pairs
+        std::sort(horizZipPoints.begin(), horizZipPoints.end());
+        const decltype(horizZipPoints)& hZip(horizZipPoints);
+
+        if (verticZip)
+        {
+            verticZipPoints.reserve(verticZipPoints.size() + 2*numLines);
+            for (uint y = 1; y < numLines - 1; ++y)
+            {
+                if (fixedPoints.count(y * lineLength) == 0)
+                {
+                    verticZipPoints.push_back(std::make_pair(0, y));
+                }
+                if (fixedPoints.count(y * lineLength + lineLength - 1) == 0)
+                {
+                    verticZipPoints.push_back(std::make_pair(lineLength - 1, y));
+                }
+            }
+        }
+        std::sort(verticZipPoints.begin(), verticZipPoints.end());
+        const decltype(verticZipPoints)& vZip(verticZipPoints);
+
+        if (horizZip && verticZip)
+        {
+            horizAndVerticZipPoints.reserve(4);
+            if (fixedPoints.count(0) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(0,0));
+            }
+            if (fixedPoints.count(lineLength - 1) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(lineLength, 0));
+            }
+            if (fixedPoints.count((numLines - 1) * lineLength) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(0, numLines - 1));
+            }
+            if (fixedPoints.count((numLines - 1) * lineLength + lineLength - 1) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(lineLength - 1, numLines - 1));
+            }
+        }
+        std::sort(horizAndVerticZipPoints.begin(), horizAndVerticZipPoints.end());
+        const decltype(horizAndVerticZipPoints)& hvZip(horizAndVerticZipPoints);
 
         // Create the previous voltage array from the current array
         decltype(grid->voltages) prevVoltages(voltages);
@@ -64,6 +172,7 @@ namespace FDM
         const uint numThreads = (prevVoltages.size() / omp_get_max_threads() >= 10000)
             ? omp_get_max_threads()
             : numWorkChunks;
+        omp_set_num_threads(numThreads);
         // remaining points that don't divide between the threads
         const uint rem = prevVoltages.size() % numThreads;
         // size of work chunk for each thread
@@ -80,6 +189,30 @@ namespace FDM
             std::swap(prevVoltages, voltages);
             // const ref to avoid damage again
             const decltype(grid->voltages)& pVoltage = prevVoltages;
+
+            // Used to wrap zip access
+            const auto WrapGridAccessNewVal =
+                [&pVoltage, lineLength, numLines] (const std::pair<uint,uint>& pt) -> f64
+                {
+                    const uint id1 = pt.second * lineLength + (((int)pt.first - 1) < 0
+                                                               ? lineLength - 1
+                                                               : pt.first - 1);
+
+                    const uint id2 = pt.second * lineLength + (pt.first + 1 >= lineLength
+                                                               ? 0
+                                                               : pt.first + 1);
+                    const uint id3 = (((int)pt.second - 1) < 0
+                                      ? numLines - 1
+                                      : pt.second - 1) * lineLength + pt.first;
+
+                    const uint id4 = (pt.second + 1 >= numLines
+                                      ? 0
+                                      : pt.second + 1) * lineLength + pt.first;
+
+                    const f64 newVal = 0.25*(pVoltage[id1] + pVoltage[id2]
+                                             + pVoltage[id3] + pVoltage[id4]);
+                    return newVal;
+                };
 
             // Loop over threads (split per thread and complete work chunk)
 #pragma omp parallel for default(none) shared(errorChunk, cRange, lineLength, voltages, maxErr, i, pVoltage)
@@ -152,6 +285,45 @@ namespace FDM
                         localMaxErr = absErr;
                 }
 
+                for (auto coord : hZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+
+                    if (absErr > localMaxErr)
+                    {
+                        localMaxErr = absErr;
+                    }
+                }
+
+                for (auto coord : vZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+
+                    if (absErr > localMaxErr)
+                    {
+                        localMaxErr = absErr;
+                    }
+                }
+
+                for (auto coord : hvZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+
+                    if (absErr > localMaxErr)
+                    {
+                        localMaxErr = absErr;
+                    }
+                }
+
                 if (localMaxErr > maxErr)
                 {
                     maxErr = localMaxErr;
@@ -161,7 +333,7 @@ namespace FDM
                 // TODO(Chris): Time logging
                 if (maxErr < zeroTol)
                 {
-                    LOG("Performed %u iterations, max error: %f", (unsigned)i, maxErr.load());
+                    LOG("Performed %u iterations, max error: %e", (unsigned)i, maxErr.load());
                     return;
                 }
 
@@ -189,6 +361,27 @@ namespace FDM
                     const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                     voltages[*coord] = newVal;
                 }
+
+                for (auto coord : hZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (auto coord : vZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (auto coord : hvZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
             }
         }
         LOG("Overran max iteration counter (%u), max error: %f", (unsigned)maxIter, maxErr.load());
@@ -202,14 +395,16 @@ namespace FDM
         // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
         JasUnpack((*grid), voltages, numLines, lineLength, fixedPoints);
+        JasUnpack((*grid), horizZip, verticZip);
 
         // NOTE(Chris): We choose to trade off some memory for computation
         // speed inside the loop
         std::vector<uint> coordRange; // non fixed points
         coordRange.reserve(numLines*lineLength);
 
-        for (uint y = 0; y < numLines; ++y)
-            for (uint x = 0; x < lineLength; ++x)
+        // Ignore outer boundary (handled by zips)
+        for (uint y = 1; y < numLines - 1; ++y)
+            for (uint x = 1; x < lineLength - 1; ++x)
             {
                 if (fixedPoints.count(y * lineLength + x) == 0)
                 {
@@ -218,6 +413,111 @@ namespace FDM
             }
         // Make a const ref so we don't mess with the contents
         const decltype(coordRange)& cRange = coordRange;
+
+        if (!verticZip)
+        {
+            // Check first and final column for empty pixels (corners require more specific check)
+            for (uint y = 1; y < numLines - 1; ++y)
+            {
+                if (fixedPoints.count(y * lineLength) == 0
+                    || fixedPoints.count(y * lineLength + lineLength - 1) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+            }
+        }
+
+        if (!horizZip)
+        {
+            // Check first and final row for empty pixels (corners require more specific check)
+            for (uint x = 1; x < lineLength - 1; ++x)
+            {
+                if (fixedPoints.count(x) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength + x) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+            }
+        }
+
+        if (!horizZip || !verticZip)
+        {
+                if (fixedPoints.count(0) == 0
+                    || fixedPoints.count(lineLength - 1) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength) == 0
+                    || fixedPoints.count((numLines - 1) * lineLength + lineLength - 1) == 0)
+                {
+                    LOG("Badly described grid, some outer points are not set, but the relevant zip is not enabled");
+                    return;
+                }
+        }
+
+        std::vector<std::pair<uint, uint> > horizZipPoints;
+        std::vector<std::pair<uint, uint> > verticZipPoints;
+        std::vector<std::pair<uint, uint> > horizAndVerticZipPoints;
+
+        if (horizZip)
+        {
+            horizZipPoints.reserve(2 * lineLength);
+            for (uint x = 1; x < lineLength - 1; ++x)
+            {
+                if (fixedPoints.count(x) == 0)
+                {
+                    horizZipPoints.push_back(std::make_pair(x, 0));
+                }
+
+                if (fixedPoints.count((numLines - 1) * lineLength + x) == 0)
+                {
+                    horizZipPoints.push_back(std::make_pair(x, numLines - 1));
+                }
+            }
+        }
+        // Sort automatically compares first, then second types for pairs
+        std::sort(horizZipPoints.begin(), horizZipPoints.end());
+        const decltype(horizZipPoints)& hZip(horizZipPoints);
+
+        if (verticZip)
+        {
+            verticZipPoints.reserve(2*numLines);
+            for (uint y = 1; y < numLines - 1; ++y)
+            {
+                if (fixedPoints.count(y * lineLength) == 0)
+                {
+                    verticZipPoints.push_back(std::make_pair(0, y));
+                }
+                if (fixedPoints.count(y * lineLength + lineLength - 1) == 0)
+                {
+                    verticZipPoints.push_back(std::make_pair(lineLength - 1, y));
+                }
+            }
+        }
+        std::sort(verticZipPoints.begin(), verticZipPoints.end());
+        const decltype(verticZipPoints)& vZip(verticZipPoints);
+
+        if (horizZip && verticZip)
+        {
+            horizAndVerticZipPoints.reserve(4);
+            if (fixedPoints.count(0) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(0,0));
+            }
+            if (fixedPoints.count(lineLength - 1) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(lineLength, 0));
+            }
+            if (fixedPoints.count((numLines - 1) * lineLength) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(0, numLines - 1));
+            }
+            if (fixedPoints.count((numLines - 1) * lineLength + lineLength - 1) == 0)
+            {
+                horizAndVerticZipPoints.push_back(std::make_pair(lineLength - 1, numLines - 1));
+            }
+        }
+        std::sort(horizAndVerticZipPoints.begin(), horizAndVerticZipPoints.end());
+        const decltype(horizAndVerticZipPoints)& hvZip(horizAndVerticZipPoints);
 
         // Create the previous voltage array from the current array
         decltype(grid->voltages) prevVoltages(voltages);
@@ -234,6 +534,29 @@ namespace FDM
             std::swap(prevVoltages, voltages);
             // const ref to avoid damage again
             const decltype(grid->voltages)& pVoltage = prevVoltages;
+
+            // Used to wrap zip access
+            auto WrapGridAccessNewVal = [&pVoltage, numLines, lineLength] (const std::pair<uint,uint>& pt) -> f64
+                {
+                    const uint id1 = pt.second * lineLength + ((int)pt.first - 1 < 0
+                                                                     ? lineLength - 1
+                                                                     : pt.first - 1);
+
+                    const uint id2 = pt.second * lineLength + (pt.first + 1 >= lineLength
+                                                                     ? 0
+                                                                     : pt.first + 1);
+                    const uint id3 = ((int)pt.second - 1 < 0
+                                      ? numLines - 1
+                                      : pt.second - 1) * lineLength + pt.first;
+
+                    const uint id4 = (pt.second + 1 >= numLines
+                                      ? 0
+                                      : pt.second + 1) * lineLength + pt.first;
+
+                    const f64 newVal = 0.25*(pVoltage[id1] + pVoltage[id2]
+                                             + pVoltage[id3] + pVoltage[id4]);
+                    return newVal;
+                };
 
             // Unlikely means the branch predictor will always go the
             // other way, it will have to backtrack on the very rare
@@ -254,6 +577,45 @@ namespace FDM
                     const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                     voltages[*coord] = newVal;
                     const f64 absErr = std::abs((pVoltage[*coord] - newVal)/newVal);
+
+                    if (absErr > threadMaxErr)
+                    {
+                        threadMaxErr = absErr;
+                    }
+                }
+
+                for (auto coord : hZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+
+                    if (absErr > threadMaxErr)
+                    {
+                        threadMaxErr = absErr;
+                    }
+                }
+
+                for (auto coord : vZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+
+                    if (absErr > threadMaxErr)
+                    {
+                        threadMaxErr = absErr;
+                    }
+                }
+
+                for (auto coord : hvZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
 
                     if (absErr > threadMaxErr)
                     {
@@ -299,6 +661,27 @@ namespace FDM
                 {
                     const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                     voltages[*coord] = newVal;
+                }
+
+                for (auto coord : hZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (auto coord : vZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (auto coord : hvZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
                 }
             }
         }

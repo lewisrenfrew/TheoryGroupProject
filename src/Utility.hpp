@@ -15,6 +15,7 @@
 #include <omp.h>
 #else
 extern "C" inline int omp_get_max_threads() { return 1; } // Glorious hack for clang not supporting OpenMP in mainline yet
+extern "C" inline void omp_set_num_threads(int num) { (void)num; }
 #endif
 
 // NOTE(Chris): Macros from linux kernel for branch optimization

@@ -92,7 +92,7 @@ int main(int argc, const char* argv[])
 
     JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
 
-    Grid grid;
+    Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
     // NOTE(Chris): Staggered leapfrog seems to follow a 1/(x^2) convergence, we can exploit this...

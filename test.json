@@ -1,8 +1,10 @@
 {
-    "ImagePath" : "prob0.png",
+    "ImagePath" : "prob1ZipRot.png",
     "ColorMapPath" : "cmap.json",
+    "MaxRelErr" : 0.00001,
     "ScaleFactor" : 4,
-    "MinRelErr" : 0.00001,
     "MaxIterations" : 100000,
-    "PixelsPerMeter" : 100
+    "PixelsPerMeter" : 100,
+    "HorizontalZip" : true,
+    "VerticalZip" : true
 }

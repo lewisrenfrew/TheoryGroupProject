@@ -118,8 +118,8 @@ enum class ConstraintType
     OUTSIDE, // Ignore
     LERP_HORIZ, // Lerp along x
     LERP_VERTIC, // Lerp along y
-    ZIP_X, // Join linked rows at this point
-    ZIP_Y, // Join linked columns at this point
+    // ZIP_X, // Link top and bottom rows
+    // ZIP_Y, // Link left and right cols
 };
 
 typedef std::pair<ConstraintType, f64> Constraint;
@@ -137,12 +137,22 @@ public:
     /// Height of the simulation area
     uint numLines;
     /// Stores the indices and values of the fixed points
-    // std::vector<std::pair<MemIndex, f64> > fixedPoints;
     std::unordered_map<MemIndex, f64> fixedPoints;
+    // Enable horizontal and vertical zipping for the edges of the grid
+    bool horizZip;
+    bool verticZip;
 
     /// Default constructors and assignment operators to keep
     /// everything working
-    Grid() = default;
+    Grid(bool hZip, bool vZip) :
+        voltages(),
+        lineLength(0),
+        numLines(0),
+        fixedPoints(),
+        horizZip(hZip),
+        verticZip(vZip)
+    {}
+
     Grid(const Grid&) = default;
     Grid(Grid&&) = default;
     Grid& operator=(const Grid&) = default;

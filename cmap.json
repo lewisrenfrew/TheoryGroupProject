@@ -12,6 +12,16 @@
         },
 
         {
+            "Type" : "VerticalLerp",
+            "Color" :
+            {
+                "r" : 255,
+                "g" : 0,
+                "b" : 255
+            }
+        },
+
+        {
             "Type" : "Constant",
             "Color" :
             {
@@ -53,6 +63,19 @@
                 "r" : 237
             },
             "Value" : 10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 63,
+                "g" : 72,
+                "b" : 204
+            },
+            "Value" : -10
         }
+
+
     ]
 }
