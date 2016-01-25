@@ -107,8 +107,9 @@ int main(int argc, const char* argv[])
     WriteGnuplotColormapFile(grid);
     WriteGnuplotContourFile(grid);
 
-    WriteGradientGridForGnuplot(grad);
-    WriteGnuplotGradientFile(grad, 0.08);
+    // WriteGradientGridForGnuplot(grad);
+    // WriteGnuplotGradientFile(grad, 0.08);
+    WriteGradientFiles(grad);
 
     return EXIT_SUCCESS;
 }
