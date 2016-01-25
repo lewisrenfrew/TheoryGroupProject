@@ -1,0 +1,5 @@
+-I./IncludeThird
+-I./IncludeThird/tclap-1.2.1/include
+-std=c++11
+-O2
+-g
