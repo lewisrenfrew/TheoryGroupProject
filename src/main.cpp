@@ -152,9 +152,16 @@ CompareProblem0(const std::vector<std::string>& paths)
 
     using namespace Plot;
 
-    WriteGridForGnuplot(*diff);
-    WriteGnuplotColormapFile(*diff);
-    WriteGnuplotContourFile(*diff);
+    WriteGridForGnuplot(grid);
+    WriteGnuplotColormapFile(grid);
+    WriteGnuplotContourFile(grid);
+
+    WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
+    WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+
+    WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
+    WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
+    WriteGnuplotContourFile(analytic);
 
     // WriteGridForGnuplot(analytic);
     // WriteGnuplotColormapFile(analytic);

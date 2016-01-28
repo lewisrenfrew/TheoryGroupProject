@@ -1,7 +1,7 @@
 {
     "ImagePath" : "prob0HR.png",
     "ColorMapPath" : "cmap.json",
-    "MaxRelErr" : 0.0000001,
+    "MaxRelErr" : 0.001,
     "ScaleFactor" : 1,
     "MaxIterations" : 10000000,
     "PixelsPerMeter" : 100,
