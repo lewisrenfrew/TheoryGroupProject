@@ -6,6 +6,8 @@
    ========================================================================== */
 #include "GlobalDefines.hpp"
 #include "FDM.hpp"
+#include "AnalyticalGridFunctions.hpp"
+#include "Compare.hpp"
 #include "Grid.hpp"
 #include "GradientGrid.hpp"
 #include "Plot.hpp"
@@ -25,15 +27,24 @@ namespace Log
 }
 #endif
 
-#if 1
+enum class OperationMode
+{
+    SingleSimulation,
+    CompareProblem0,
+    CompareProblem1,
+    CompareTwo
+};
+
 struct CommandLineFlags
 {
     bool lastMatrix;
-    std::string infofilepath;
+    OperationMode mode;
+    std::vector<std::string> inputPaths;
 };
 
-
-CommandLineFlags ParseArguments(int argc, const char* argv[])
+static
+CommandLineFlags
+ParseArguments(const int argc, const char* argv[])
 {
     try
     {
@@ -45,45 +56,70 @@ CommandLineFlags ParseArguments(int argc, const char* argv[])
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription,add to an object(cmd line), default state.
-        TCLAP::SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used",
-                                    cmd,false);
+        SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used", false);
+
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription, default state, default string value , path, add to an object(cmd line).
-        ValueArg<std::string> infofile("i" , "infofile","holds the information about the matrix",
-                                              true, "", "path", cmd);
+        ValueArg<std::string> infoFile("i" , "infofile","Holds the information about each matrix", false, "",
+                                              "path");
+
+        SwitchArg cmp0("0", "compareprob0", "Compares the input file against the analytical solution to problem 0", false);
+        SwitchArg cmp1("1", "compareprob1", "Compares the input file against the analytical solution to problem 1", false);
+        SwitchArg cmp2("c", "compare", "Compares the the two input files against each other", false);
+        std::vector<Arg*> cmpArgs({&cmp0, &cmp1, &cmp2, &infoFile});
+        cmd.xorAdd(cmpArgs);
+
+        // TODO(Chris): Need params for analytical solutions - json?
+
+        UnlabeledMultiArg<std::string> cmpNames("compNames", "Paths of the JSON definition files to compare", false, "File paths", cmd);
 
         cmd.parse(argc, argv);
 
         CommandLineFlags ret;
 
         ret.lastMatrix = lastMatrix.getValue();
-        ret.infofilepath = infofile.getValue();
 
-        if(ret.lastMatrix)
+        if (cmp0.getValue())
         {
-            //TODO, get the previous matrix
+            ret.mode = OperationMode::CompareProblem0;
+            ret.inputPaths = cmpNames.getValue();
+        }
+        else if (cmp1.getValue())
+        {
+            ret.mode = OperationMode::CompareProblem1;
+            ret.inputPaths = cmpNames.getValue();
+        }
+        else if (cmp2.getValue())
+        {
+            ret.mode = OperationMode::CompareTwo;
+            ret.inputPaths = cmpNames.getValue();
         }
         else
         {
-            //TODO,
+            ret.mode = OperationMode::SingleSimulation;
+            ret.inputPaths = {infoFile.getValue()};
         }
 
         return ret;
-
     }
     catch(TCLAP::ArgException& ex)
     {
         LOG("Parsing error %s for arg %s", ex.error().c_str(), ex.argId().c_str());
     }
 }
-#endif
 
-#ifndef CATCH_CONFIG_MAIN
-int main(int argc, const char* argv[])
+static
+int
+CompareProblem0(const std::vector<std::string>& paths)
 {
-    auto args = ParseArguments(argc, argv);
-    auto cfg = Cfg::LoadGridConfigFile(args.infofilepath.c_str());
+    if (paths.size() != 1)
+    {
+        LOG("Expected 1 path");
+        return EXIT_FAILURE;
+    }
+
+    auto cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
     if (!cfg)
     {
         LOG("Cannot understand config file, exiting");
@@ -95,22 +131,128 @@ int main(int argc, const char* argv[])
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    // NOTE(Chris): Staggered leapfrog seems to follow a 1/(x^2) convergence, we can exploit this...
     FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
-    GradientGrid grad;
-    grad.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
+    GradientGrid gradGrid;
+    gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
+
+    const f64 bigRad = 298.0;
+    const f64 smallRad = 20.0;
+
+    Grid analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, 10.0,
+                                             bigRad/100.0,
+                                             smallRad/100.0,
+                                             scaleFactor.ValueOr(1) * pixelsPerMeter.ValueOr(100.0));
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic);
+
+    if (!diff)
+    {
+        return EXIT_FAILURE;
+    }
+
+    using namespace Plot;
+
+    WriteGridForGnuplot(*diff);
+    WriteGnuplotColormapFile(*diff);
+    WriteGnuplotContourFile(*diff);
+
+    // WriteGridForGnuplot(analytic);
+    // WriteGnuplotColormapFile(analytic);
+    // WriteGnuplotContourFile(analytic);
+    return EXIT_SUCCESS;
+}
+
+static
+int
+CompareProblem1(const std::vector<std::string>& paths)
+{
+    if (paths.size() != 1)
+    {
+        LOG("Expected 1 path");
+        return EXIT_FAILURE;
+    }
+
+}
+
+static
+int
+CompareTwo(const std::vector<std::string>& paths)
+{
+    if (paths.size() != 2)
+    {
+        LOG("Expected 2 paths");
+        return EXIT_FAILURE;
+    }
+
+    LOG("Not yet implemented");
+    return EXIT_SUCCESS;
+
+}
+
+static
+int
+SingleSimulation(const std::string& path)
+{
+    auto cfg = Cfg::LoadGridConfigFile(path.c_str());
+    if (!cfg)
+    {
+        LOG("Cannot understand config file, exiting");
+        return EXIT_FAILURE;
+    }
+
+    JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
+
+    Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
+    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
+
+    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+
+    GradientGrid gradGrid;
+    gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
 
     using namespace Plot;
 
     WriteGridForGnuplot(grid);
     WriteGnuplotColormapFile(grid);
     WriteGnuplotContourFile(grid);
-
-    // WriteGradientGridForGnuplot(grad);
-    // WriteGnuplotGradientFile(grad, 0.08);
-    WriteGradientFiles(grad);
+    WriteGradientFiles(gradGrid);
 
     return EXIT_SUCCESS;
+}
+
+#ifndef CATCH_CONFIG_MAIN
+int main(int argc, const char* argv[])
+{
+    auto args = ParseArguments(argc, argv);
+
+    int result = EXIT_SUCCESS;
+    switch (args.mode)
+    {
+    case OperationMode::CompareProblem0:
+    {
+        result = CompareProblem0(args.inputPaths);
+    } break;
+
+    case OperationMode::CompareProblem1:
+    {
+        result = CompareProblem0(args.inputPaths);
+    } break;
+
+    case OperationMode::CompareTwo:
+    {
+        result = CompareTwo(args.inputPaths);
+    } break;
+
+    case OperationMode::SingleSimulation:
+    {
+        result = SingleSimulation(args.inputPaths.front());
+    } break;
+
+    default:
+        LOG("Unknown mode");
+
+    }
+
+    return result;
 }
 #endif

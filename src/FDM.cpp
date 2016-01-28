@@ -285,7 +285,7 @@ namespace FDM
                         localMaxErr = absErr;
                 }
 
-                for (auto coord : hZip)
+                for (const auto& coord : hZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -298,7 +298,7 @@ namespace FDM
                     }
                 }
 
-                for (auto coord : vZip)
+                for (const auto& coord : vZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -311,7 +311,7 @@ namespace FDM
                     }
                 }
 
-                for (auto coord : hvZip)
+                for (const auto& coord : hvZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -362,21 +362,21 @@ namespace FDM
                     voltages[*coord] = newVal;
                 }
 
-                for (auto coord : hZip)
+                for (const auto& coord : hZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
                     voltages[index] = newVal;
                 }
 
-                for (auto coord : vZip)
+                for (const auto& coord : vZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
                     voltages[index] = newVal;
                 }
 
-                for (auto coord : hvZip)
+                for (const auto& coord : hvZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -584,7 +584,7 @@ namespace FDM
                     }
                 }
 
-                for (auto coord : hZip)
+                for (const auto& coord : hZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -597,7 +597,7 @@ namespace FDM
                     }
                 }
 
-                for (auto coord : vZip)
+                for (const auto& coord : vZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -610,7 +610,7 @@ namespace FDM
                     }
                 }
 
-                for (auto coord : hvZip)
+                for (const auto& coord : hvZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
@@ -663,21 +663,21 @@ namespace FDM
                     voltages[*coord] = newVal;
                 }
 
-                for (auto coord : hZip)
+                for (const auto& coord : hZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
                     voltages[index] = newVal;
                 }
 
-                for (auto coord : vZip)
+                for (const auto& coord : vZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;
                     voltages[index] = newVal;
                 }
 
-                for (auto coord : hvZip)
+                for (const auto& coord : hvZip)
                 {
                     const f64 newVal = WrapGridAccessNewVal(coord);
                     const uint index = coord.second * lineLength + coord.first;

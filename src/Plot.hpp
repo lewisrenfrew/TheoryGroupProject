@@ -28,6 +28,7 @@ namespace Plot
     /// data file. Returns true on success
     bool
     WriteGradientFiles(const GradientGrid& grid,
+                       const uint maxVerPerSide = 50,
                        const char* gridDataFile = "Plot/GradientGrid.dat",
                        const char* plotFile = "Plot/PlotGradient.gpi");
 

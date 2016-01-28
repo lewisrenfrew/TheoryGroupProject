@@ -42,7 +42,6 @@ namespace Plot
                                 const uint stepSize,
                                 const char* filename)
     {
-#define GRADIENT_DEBUG
         FILE* file = fopen(filename, "w");
         if (!file)
         {
@@ -51,25 +50,10 @@ namespace Plot
 
         JasUnpack(grid, gradients, numLines, lineLength);
 
-#ifdef GRADIENT_DEBUG
-        auto VecNorm = [](const V2d& vec) -> f64
-            {
-                return std::sqrt(vec.x*vec.x + vec.y*vec.y);
-            };
-
-        f64 maxNorm = 0.0;
-#endif
-
         for (uint y = 0; y < numLines; y += stepSize)
         {
             for (uint x = 0; x < lineLength; x += stepSize)
             {
-#ifdef GRADIENT_DEBUG
-                f64 norm = VecNorm(gradients[y * lineLength + x]);
-                if (norm > maxNorm)
-                    maxNorm = norm;
-#endif
-
                 fprintf(file, "%u %u %f %f\n", x, y,
                         gradients[y * lineLength + x].x,
                         gradients[y * lineLength + x].y);
@@ -78,10 +62,6 @@ namespace Plot
         }
 
         fclose(file);
-
-#ifdef GRADIENT_DEBUG
-        LOG("Max norm: %f", maxNorm);
-#endif
         return true;
     }
 
@@ -199,6 +179,7 @@ namespace Plot
 
     bool
     WriteGradientFiles(const GradientGrid& grid,
+                       const uint maxVecPerSide,
                        const char* gridDataFile,
                        const char* plotFile)
     {
@@ -217,15 +198,12 @@ namespace Plot
 
         const f64 maxNorm = grid.gradients | (Map << VecNorm) | (Reduce << 0.0 << Max);
         LOG("Max norm %f", maxNorm);
+
         JasUnpack(grid, numLines, lineLength);
 
-        const uint maxVecPerSide = 50;
         const uint maxSide = numLines > lineLength ? numLines : lineLength;
         const uint stepSize = (maxSide / maxVecPerSide > 0) ? maxSide / maxVecPerSide : 1;
-        LOG("Step size: %u", stepSize);
-        // const f64 scaling = maxNorm / 1.5;
         const f64 scaling = maxSide / (0.5 * (f64)maxVecPerSide * maxNorm);
-        LOG("Scaling factor %f", scaling);
 
         bool ret1 = WriteGradientGridForGnuplot(grid, stepSize, gridDataFile);
         bool ret2 = WriteGnuplotGradientFile(grid, scaling, gridDataFile, plotFile);
