@@ -1,0 +1,44 @@
+#!/bin/bash
+#command line parameters (maximum error,problem number)
+
+#set error for test and problem number 
+#ERROR='0.01'
+#PROBLEM="p0"
+
+ERROR="$1"
+PROBLEM="$2"
+
+#define file and folder name for test run
+NAME="problem${ERROR}_${PROBLEM}"
+
+echo "$NAME"
+
+#creates directory 
+if [ -d ./Results/$NAME ]; then
+	echo "directory exists"
+else
+	mkdir ./Results/$NAME
+	echo "directory created"
+fi
+
+#copy over data
+cp ./Plot/*.dat ./Results/$NAME
+
+
+#create plots
+for X in $(ls ./Plot/*.gpi)
+do
+	SHORT="${X:7}"
+	FILENAME=$(echo "$SHORT" | cut -d. -f1) #remove filetype from name
+	mkdir -p ./Results/$NAME/$FILENAME #create sub directory for diff plots
+	echo "Created Directory ./Results/$NAME/$FILENAME"
+	gnuplot "$X" #run gnuplot wiht config files
+	echo "Plotting $FILENAME"
+	cp ./Grid.html ./Results/${NAME}/$FILENAME/${FILENAME}.html #copy over and rename result
+	cp ./gp_image_01.png ./Results/${NAME}/$FILENAME/ #cp over required img
+	echo "Plots coppied to ./Results/$NAME/$FILENAME"
+done
+echo "Script Complete"
+
+
+
