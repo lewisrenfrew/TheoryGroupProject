@@ -21,6 +21,6 @@ namespace FDM
     /// have taken place.
     void
     SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
-                           const u64 maxIter);
+                           const u64 maxIter, bool parallel = true);
 }
 #endif

@@ -200,7 +200,9 @@ CompareProblem1(const std::vector<std::string>& paths)
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
     gradGrid.CalculateNegGradient(grid, ppm);
 
-    const f64 bigRad = cfg->analyticOuter.ValueOr(300.0) / ppm;
+    // NOTE(Chris): Since we need bigRad to equal the width in number
+    // of the image in px, we may as well just use that number here
+    const f64 bigRad = grid.lineLength / (2.0*ppm);
     const f64 smallRad = cfg->analyticInner.ValueOr(50.0) / ppm;
 
     // NOTE(Chris): Small

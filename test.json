@@ -1,5 +1,5 @@
 {
-    "ImagePath" : "prob1Small.png",
+    "ImagePath" : "prob1HR.png",
     "ColorMapPath" : "cmap.json",
     "MaxRelErr" : 0.000001,
     "ScaleFactor" : 1,
@@ -7,6 +7,6 @@
     "PixelsPerMeter" : 100,
     "HorizontalZip" : false,
     "VerticalZip" : false,
-    "AnalyticInnerRadius" : 50,
-    "AnalyticOuterRadius" : 300
+    "AnalyticInnerRadius" : 3,
+    "AnalyticOuterRadius" :50 
 }
