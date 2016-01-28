@@ -1,0 +1,194 @@
+% Our Report
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{float}
+\usepackage[margin=1.3in]{geometry}
+
+\documentclass{article}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset { %
+    language=C++,
+    backgroundcolor=\color{black!5}, % set backgroundcolor
+    basicstyle=\footnotesize,% basic font setting
+}
+
+
+
+
+
+
+\begin{document}
+
+
+
+
+\title{ Theoretical Physics Group Project 2016 }
+\author{Olle Windeman, Chris Osborne, Fionn O'Sullivan, Lennart Gundelach, Lewis Renfrew}
+  
+  }
+  \maketitle
+  
+  \begin{abstract}
+TODO: ABSTRACT
+\end{abstract}
+
+  
+  \section{Introduction}
+It is the purpose of this report to detail the process of solving Laplace's equation in order to obtain the form of potential and thus electric field for a defined space. In many situations Laplace's equation takes the form of a differential equation that cannot be solved analytically and as such the main aim of the project was to create a software package at the core of which is a C++ program that can solve Laplace's equation numerically using finite difference methods for a given arrangement of grounds and voltages, in our case that of an edge-coupled stripline, and give the form of the potential and thus the electric field for the situation. In order to create a more generic piece of software that could not only solve for our given problem but more generally for an arrangement of voltages and grounds the program was written such that a user can specify the arrangement by creating an image file. The project is of interest because the end product is a useful tool that can solve Laplace's equation, an equation that describes a number of physical situations, numerically when it is not possible to solve analytically and computational power is required. Of course when implementing any method of solving a problem it is of interest to consider the limitations of the method and as such it was of interest in this project to consider the error and efficiency of the software package. Included in the software is a function that can analyse solutions. As the program can solve for a given case it is possible to solve when the solution can also be obtained analytically. In comparing the two solutions the performance of the program can be analysed, particularly as the number of iterative steps is increased. Additionally this analysis section of the software can compare the solutions returned by different numerical methods when comparison to an analytical solution is not possible due to the nature of the problem.
+
+\section{Laplace's Equation for Electric Potential}
+Gauss's Law gives the divergence of an electric field in terms of charge density: 
+\begin{equation}
+\vec{\nabla} \cdot \vec{E} = \frac{\rho}{\varepsilon_{0}}
+\label{1}
+\end{equation}
+and in space out with a conductor there is no charge density.  Divergence of the electric field is 0 and Gauss's equation becomes
+\begin{equation}
+\vec{\nabla} \cdot \vec{E} =0
+\label{2}
+\end{equation}
+The Maxwell-Faraday equation states that curl of Electric Field is equal to negative the rate of change of the Magnetic Field with respect to time, which is 0 for a steady time-independent state:
+\begin{equation}
+\vec{\nabla}\times\vec{E} = -\frac{\partial^2{B}}{\partial{t}^2} = 0
+\label{3}
+\end{equation}
+Since the curl of the Electric Field is zero it can be written in terms of a potential function \phi\) that is defined at all points in space:
+\begin{equation}
+\vec{E} = -\vec{\nabla}\phi
+\label{3}
+\end{equation}
+Substituting (3) into (2) obtains Laplace's equation for electric potential:
+\begin{equation}
+\vec{\nabla}^2\phi = 0
+\label{5}
+\end{equation}
+i.e the equation that this project is concerned with solving.
+\section{Analytical Solutions For Two Situations TODO: ADD DEVELOPMENTS TO ANALYTICAL SOLUTONS}
+In order for it to be possible to compare the eventual numerical method utilised by the software to an analytical method of solving Laplace's equation for electric potential two given situations were considered and the form of potential in each case was obtained by solving the equation analytically and implementing appropriate boundary conditions. 
+\newline The first and simplest case consists of an inner cylinder at ground and an outer concentric cylinder at a potential of +\textit{V}. \\
+TODO: REFER TO ILLUSTRATION OF PROBLEM 1\\
+To determine the analytical solution for this situation we first rewrite Laplace's Equation in polar form and then use a substitution to reduce the order of the differentials, solve in two steps as two first order differential equations and then apply appropriate boundary conditions (See Appendix 1).
+The analytical solution is:
+\begin{equation}
+\phi(r)=\frac{V}{\ln\left|\frac{R_o}{R_i}\right|}\ln\left|\frac{r}{R_i}\right|
+\label{29}
+\end{equation}
+where R_i\) and R_o\) are the radii of the inner and outer cylinder respectively and \textit{r} is the distance from the origin, in this case the centre of the concentric cylinders. \\
+The second case (TODO: REFER TO IMAGE FOR PROBLEM 1) is more complicated in that there is a \theta\) dependence and as such Laplace's equation remains one containing partial differentials. To arrive at a solution we postulate that the potential behaves as if it were solely due to parallel plates in the region outside a circle with a diameter equal to the distance between the plates. We also suppose that the solution along the circumference of this circle takes a cosine form. With these two ideas we can solve for the region inside the circle in polar coordinates user our cosine form as a boundary condition and then say that outside this circle the solution is identical to that for parallel plates: i.e 
+\begin{equation}
+\phi(r,\theta)=(r-R_1)-\frac{V}{R_2-R_1}\cos(\theta)
+\label{}
+\end{equation}
+inside the circle, i.e \textit{r} < R_2\) and
+\begin{equation}
+\phi(x)=-\frac{2Vx}{L}
+\label{}
+\end{equation}
+outside the circle, i.e \textit{x} = \textit{r}\cos(\theta)\) > \textit{R}_2\) (see Appendix 2). By substituting \textit{r}=\textit{R}_2\) and \textit{x}=\textit{R}_2\cos\theta\) into (7) and (8) respectively it can be seen that the two solutions agree at the boundary, i.e along the circumference of the circle that we had set up.
+
+
+\section{Solving Numerically For a General Case}
+-underlying theory of methods (outline here then detail in appendix maybe) \\
+-how they are implemented in the software \\
+-how the software is structured (flow diagram or similiar) \\
+-how the software is applied to the desired situations \\
+-how the results are analysed \\
+
+\section{Results for Specific Cases}
+-numerical result=(i.e form of solution, graphs of potential, field, etc) for problem 0 \\
+-numerical result for problem 1\\
+-numerical result for problem 2.4 \\ 
+
+\section{Analysis and Discussion of Results}
+-numerical results for all three problems\\
+-comparison between numerical and analytical results where applicable\\
+-comparison between different methods of numerical solvers\\
+
+\section{Conclusion and Outlook}
+-evaluation of the project - what went well - what would be improved if repeated\\
+-outlook for further work e.g extending the software etc \\
+
+
+\section{Appendix 1 - Analytical Solution to Problem 0}
+In order to solve for our situation (TODO REFER TO IMAGE FOR PROBLEM 0) that demonstrates circular symmetry Laplace's equation is first converted to polar form:
+\begin{equation}
+\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
+\label{6}
+\end{equation}
+As there is no \theta\) dependence for this situation the term containing the second derivative of \phi\) with respect to \theta\) disappears and the differential equation, no longer partial, becomes:
+\begin{equation}
+\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}=0
+\label{8}
+\end{equation}
+and is now easily solvable by first introducing a function to reduce order:
+
+
+\begin{equation}
+\lambda(r) = \frac{\partial\phi}{\partial r}
+\label{10}
+\end{equation}
+to rewrite the differential equation as follows: 
+\begin{equation}
+\lambda ' + \frac{1}{r}\lambda = 0.
+\label{11}
+\end{equation}
+This is trivial to solve for \lambda\) and thus first derivative of potential,  i.e:
+\begin{equation}
+\lambda(r) =  \frac{\partial\phi}{\partial r} = ke^{-\ln|r|} = \frac{k}{r}
+\label{11}
+\end{equation}
+where \textit{k} is some constant.
+\begin{equation}
+ \frac{\partial\phi}{\partial r} = \frac{k}{r}
+\label{11}
+\end{equation}
+The first order differential equation (11) is now trivial to separate and solve and we arrive at a general solution for potential:
+\begin{equation}
+\phi = k\ln|r| + C
+\label{11}
+\end{equation}
+Using the fact that potential is 0 at R_i\) and V at R_o\) as boundary conditions gives the particular form of potential as (6). 
+
+\section{Appendix 2 - Analytical Solution to Problem 1}
+We solve Laplace's equation in polar coordinates
+\begin{equation}
+\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
+\label{6}
+\end{equation}
+for the region inside the circle, i.e \textit{r} < R_2\)(TODO REFER TO DIAGRAM FOR PROBLEM 1) with boundary conditions  \\ \phi(R_2, \theta) = -\textit{V}\cos(\theta)\)  \:  \: \:,\: \: \:       \phi(R_1, \theta) = 0\)  \\using a separation of variables method. \\ 
+Let: 
+\begin{equation}
+\phi(r, \theta) = R(r)\Theta(\theta)
+\end{equation}
+Then substituting into Laplace's equation gives:
+\begin{equation}
+R''\Theta + \frac{1}{r}R'\Theta + \frac{1}{r^2}R\Theta'' = 0 
+\end{equation}
+and multiplying by \textit{r}^2\) and dividing through by \textit{R} and \Theta\) gives:
+\begin{equation}
+\frac{r^2R''}{R} + \frac{rR'}{R} = -\frac{\Theta''}{\Theta} = k
+\end{equation}
+where \textit{k} is some constant. \\
+TODO: FINISH COPYING CHRIS' WORKING HERE \\
+Outside the circle we assume a parallel plates situation and solve Laplace's equation in Cartesian coordinates:
+\begin{equation}
+ \frac{\partial^2\phi}{\partial^2x} +\frac{\partial^2\phi}{\partial^2y} =0
+\label{6}
+\end{equation} 
+which simplifies to 
+\begin{equation}
+\frac{\partial^2\phi}{\partial^2x}  =0
+\end{equation} since there is no \textit{y} dependence in this situation. This has solution
+\begin{equation}
+\phi(x) = Cx + D
+\end{equation}
+where C and D are some constants. Using the fact that potential at \textit{x} = \textit{L}/2 is -\textit{V} and potential at  \textit{x} = -\textit{L}/2  is \textit{V} for a coordinate system where the y-axis is halfway between the plates as boundary conditions yields the solution at (8).
+
+
+
+\end{document}

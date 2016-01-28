@@ -9,7 +9,7 @@ SRCEXT=cpp
 SRCDIR=src
 OBJDIR=obj
 BINDIR=bin
-INC=
+INC=$(HERE)/IncludeThird/ $(HERE)/IncludeThird/tclap-1.2.1/include/
 
 CXXFLAGS=-std=c++11 -Wall
 
@@ -17,15 +17,16 @@ OPTFLAGS1=-O0 -g -march=native -mfpmath=sse # Debug
 OPTFLAGS2=-O2 -march=native -mfpmath=sse -flto -B/usr/lib/gold-ld # Clang Linux Release build
 OPTFLAGS3=-O2 -march=native -mfpmath=sse # GCC Release Linux / Clang Release Mac
 OPTFLAGS4=-O2 -march=native -mfpmath=sse -Wa,-q -mmacosx-version-min=10.9 # GCC-5 Release Mac, use Clang linker
+OPTFLAGS5=-O2 -g -march=native -mfpmath=sse # Linux perf profile
 OBJECT=-c
 ASM=-S
-OPTFLAGS=$(OPTFLAGS3)
+OPTFLAGS=$(OPTFLAGS5)
 # OBJECT=$(ASM)
 
 # Set true to enable threading, empty for not
 ENABLEOPENMP=true
 
-FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD # Debug
+FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer # Debug
 FEATUREFLAGS2=-DNDEBUG -DMAT_ACC -DUSE_SIMD # Release
 FEATUREFLAGS3=-DDEBUG -DMAT_ACC # Debug no SIMD
 FEATUREFLAGS4=-DNDEBUG -DMAT_ACC # Release no SIMD
@@ -61,7 +62,6 @@ endif
 # SDLLIBS=$(shell $(HERE)/third/sdlBuild/bin/sdl2-config --libs)
 # SDLLIBS=$(shell $(HERE)/third/sdlBuild/bin/sdl2-config --static-libs)
 
-## Shouldn't need to modify much below this line other than SDL ##
 INC:=$(addprefix -I,$(INC))
 LIBS:=$(addprefix -l,$(LIBS))
 LIBDIR:=$(addprefix -L,$(LIBDIR))
@@ -74,7 +74,6 @@ LIBS+=
 LDFLAGS+=$(LIBDIR) $(LIBS)
 DEPS:=$(OBJECTS:.o=.d)
 
-## Don't touch below this line ##
 .phony: all clean distclean
 
 all: $(BINDIR)/$(TARGET)
@@ -94,7 +93,7 @@ plot: run
 -include $(DEPS)
 
 $(OBJDIR)/%.o: %.$(SRCEXT)
-	@echo "Generating dependencies for $<..."
+	@echo "Generating dependency list for $<..."
 	@$(call make-depend,$<,$@,$(subst .o,.d,$@))
 	@echo "Compiling $<..."
 	@$(CXX) $(CXXFLAGS) $< -o $@
@@ -108,6 +107,9 @@ distclean: clean
 buildrepo:
 	@$(call make-repo)
 
+# These use gcc/clang's abilities to output makefile requirements for a file,
+# so they generate a depencency list for each file, if for example a header
+# included by that file is changed, then it will be recompiled
 define make-repo
    for dir in $(SRCDIRS); \
    do \
@@ -115,8 +117,6 @@ define make-repo
    done
 endef
 
-
-# usage: $(call make-depend,source-file,object-file,depend-file)
 define make-depend
   $(CXX) -MM       \
          -MF $3    \
