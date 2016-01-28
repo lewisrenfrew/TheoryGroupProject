@@ -242,6 +242,7 @@ ParseColorMapFromFile(const char* path)
 
 namespace Cfg
 {
+    // TODO(Chris): Add a mode switch to vary the reqd args
     Jasnah::Option<GridConfigData>
     LoadGridConfigFile(const char* path)
     {
@@ -400,6 +401,26 @@ namespace Cfg
                     return Jasnah::None;
                 }
                 result.verticZip = iter->value.GetBool();
+            } break;
+
+            case StringHash("AnalyticInnerRadius"):
+            {
+                if (!iter->value.IsNumber())
+                {
+                    LOG("AnalyticInnerRadius member must be a number");
+                    return Jasnah::None;
+                }
+                result.analyticInner = iter->value.GetDouble();
+            } break;
+
+            case StringHash("AnalyticOuterRadius"):
+            {
+                if (!iter->value.IsNumber())
+                {
+                    LOG("AnalyticOuterRadius member must be a number");
+                    return Jasnah::None;
+                }
+                result.analyticOuter = iter->value.GetDouble();
             } break;
 
             default:

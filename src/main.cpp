@@ -134,15 +134,18 @@ CompareProblem0(const std::vector<std::string>& paths)
     FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
-    gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
+    const f64 ppm = pixelsPerMeter.ValueOr(100.0);
+    gradGrid.CalculateNegGradient(grid, ppm);
 
-    const f64 bigRad = 298.0;
-    const f64 smallRad = 20.0;
+    // const f64 bigRad = 298.0/pixelsPerMeter.ValueOr(100.0);
+    // const f64 smallRad = 20.0/pixelsPerMeter.ValueOr(100.0);
+    const f64 bigRad = cfg->analyticOuter.ValueOr(298.0) / ppm;
+    const f64 smallRad = cfg->analyticInner.ValueOr(20.0) / ppm;
 
     Grid analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, 10.0,
-                                             bigRad/100.0,
-                                             smallRad/100.0,
-                                             scaleFactor.ValueOr(1) * pixelsPerMeter.ValueOr(100.0));
+                                             bigRad,
+                                             smallRad,
+                                             scaleFactor.ValueOr(1) * ppm);
     Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic);
 
     if (!diff)
@@ -179,6 +182,56 @@ CompareProblem1(const std::vector<std::string>& paths)
         return EXIT_FAILURE;
     }
 
+    auto cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
+    if (!cfg)
+    {
+        LOG("Cannot understand config file, exiting");
+        return EXIT_FAILURE;
+    }
+
+    JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
+
+    Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
+    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
+
+    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+
+    GradientGrid gradGrid;
+    const f64 ppm = pixelsPerMeter.ValueOr(100.0);
+    gradGrid.CalculateNegGradient(grid, ppm);
+
+    const f64 bigRad = cfg->analyticOuter.ValueOr(300.0) / ppm;
+    const f64 smallRad = cfg->analyticInner.ValueOr(50.0) / ppm;
+
+    // NOTE(Chris): Small
+    // const f64 bigRad = 25.0 / pixelsPerMeter.ValueOr(100.0);
+    // const f64 smallRad = 3.0 / pixelsPerMeter.ValueOr(100.0);
+
+    Grid analytic = AGF::AnalyticalGridFill1(grid.lineLength, grid.numLines, 10.0,
+                                             bigRad,
+                                             smallRad,
+                                             scaleFactor.ValueOr(1) * ppm);
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic);
+
+    if (!diff)
+    {
+        return EXIT_FAILURE;
+    }
+
+    using namespace Plot;
+
+    WriteGridForGnuplot(grid);
+    WriteGnuplotColormapFile(grid);
+    WriteGnuplotContourFile(grid);
+
+    WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
+    WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+
+    WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
+    WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
+    WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
+
+    return EXIT_SUCCESS;
 }
 
 static
@@ -242,7 +295,7 @@ int main(int argc, const char* argv[])
 
     case OperationMode::CompareProblem1:
     {
-        result = CompareProblem0(args.inputPaths);
+        result = CompareProblem1(args.inputPaths);
     } break;
 
     case OperationMode::CompareTwo:

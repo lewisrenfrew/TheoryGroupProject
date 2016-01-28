@@ -1,5 +1,6 @@
 #include "Grid.hpp"
 #include "AnalyticalGridFunctions.hpp"
+#include "Utility.hpp"
 #include <cmath>
 
 namespace AGF
@@ -54,7 +55,8 @@ namespace AGF
 
 
 
-    Grid AnalyticalGridFill1 (const uint lineLength, const uint numLines, const f64 voltage, const double r2, const double r1)
+    Grid AnalyticalGridFill1 (const uint lineLength, const uint numLines, const f64 voltage,
+                              const double r2, const double r1, const f64 cellsPerMeter)
     {
         // This function fills a grid with the analytical solution for problem 1
         // Recall that the solution used the idea of solving in polar coords  between the circular ground radius r1 and the circle r2 that had diameter = plate spacing
@@ -66,35 +68,37 @@ namespace AGF
         grid.numLines = numLines;
         // loops over y
         grid.voltages.reserve(numLines*lineLength);
-        for (uint j = 0; j < numLines; j++)
+        const f64 cx = (f64)lineLength / 2.0 / cellsPerMeter;
+        const f64 cy = (f64)numLines / 2.0 / cellsPerMeter;
 
+        for (uint j = 0; j < numLines; j++)
         {
             // loops over x
             for (uint i = 0; i < lineLength; i++)
             {
+                const f64 x = (f64)i / cellsPerMeter;
+                const f64 y = (f64)j / cellsPerMeter;
+                const f64 r = std::hypot(x-cx,y-cy);
                 // tests whether a point i, j lies inside circle of radius r1
-                if (pow((i-r2),2) + pow((j-r2),2) <=  pow(r1,2.0) )
+                if (std::abs(r) <=  r1)
                 {
                     // sets potential to zero for such points
                     grid.voltages.push_back(0.0);
                 }
                 // tests whether a point lies outwith circle of radius r2
-                else if (pow((i-r2),2) + pow((j-r2),2) >  pow(r2,2.0) )
+                else if (std::abs(r) >  r2)
                 {
                     // potential takes form of parralel plate solution at such points
                     // (SHOULD WE JUST ASSUME THAT POLAR SOLUTION BELOW CORRECTLY DESCRIBES POTENTIAL OUTSIDE r2 AND REMOVE THIS TEST??
-                    grid.voltages.push_back(-(2*voltage*i)/lineLength);
+                    grid.voltages.push_back(-(2.0*voltage*(x-cx)) / (lineLength / cellsPerMeter));
                 }
                 else
                 {
                     // create new variables according to polar coorodinate rules
-                    double r = sqrt(pow(i, 2.0) + pow(j, 2.0));
-                    double costheta = (double)i/r;
+                    double costheta = (x-cx)/r;
                     // set potential to be our polar solution for all remaining points
-                    grid.voltages.push_back((r-r1) - (voltage/(r2-r1))*costheta);
+                    grid.voltages.push_back((r-r1)*( -voltage/(r2-r1))*costheta);
                 }
-
-
             }
         }
         return grid;
