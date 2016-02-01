@@ -26,6 +26,8 @@ namespace Cfg
         Jasnah::Option<f64> zeroTol;
         Jasnah::Option<bool> horizZip;
         Jasnah::Option<bool> verticZip;
+        Jasnah::Option<f64> analyticInner;
+        Jasnah::Option<f64> analyticOuter;
     };
 
     /// Loads the config file path, returns an Optional set of data,

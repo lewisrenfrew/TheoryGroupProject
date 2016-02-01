@@ -1,0 +1,20 @@
+#!/bin/bash
+#command line arguments: max_error problem
+#example call ./testscript 0.01 p0
+
+#script that runs girdl for different accuracies and outomatically creates all plots 
+#and saves them to results directory
+ERR=$1
+PRO=$2
+
+#write sed argument into nex file
+echo "s/\(\\\"MaxRelErr\\\" *:*\).*/\\1$ERR,/" > sed.text
+#call sed with file as argument
+sed -i -f sed.text config.json
+
+#execute main programm
+bin/gridle -0 config.json
+
+#run plot script
+./plotscript $ERR $PRO 
+
