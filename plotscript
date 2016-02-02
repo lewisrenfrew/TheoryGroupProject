@@ -16,6 +16,10 @@ echo "$NAME"
 #creates directory 
 if [ -d ./Results/$NAME ]; then
 	echo "directory exists"
+	rm -r ./Results/$NAME
+	mkdir ./Results/$NAME
+	echo "directory created"
+
 else
 	mkdir ./Results/$NAME
 	echo "directory created"
