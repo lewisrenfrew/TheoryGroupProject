@@ -7,6 +7,12 @@
 \usepackage{epstopdf}
 \usepackage{float}
 \usepackage[margin=1.3in]{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{pdfpages}
+
+
 
 \documentclass{article}
 \usepackage{listings}
@@ -68,18 +74,20 @@ Substituting (3) into (2) obtains Laplace's equation for electric potential:
 \label{5}
 \end{equation}
 i.e the equation that this project is concerned with solving.
-\section{Analytical Solutions For Two Situations TODO: ADD DEVELOPMENTS TO ANALYTICAL SOLUTONS}
+\section{Analytical Solutions For Two Situations} 
 In order for it to be possible to compare the eventual numerical method utilised by the software to an analytical method of solving Laplace's equation for electric potential two given situations were considered and the form of potential in each case was obtained by solving the equation analytically and implementing appropriate boundary conditions. 
-\newline The first and simplest case consists of an inner cylinder at ground and an outer concentric cylinder at a potential of +\textit{V}. \\
-TODO: REFER TO ILLUSTRATION OF PROBLEM 1\\
-To determine the analytical solution for this situation we first rewrite Laplace's Equation in polar form and then use a substitution to reduce the order of the differentials, solve in two steps as two first order differential equations and then apply appropriate boundary conditions (See Appendix 1).
-The analytical solution is:
+\newline The first and simplest case consists of an inner cylinder at ground and an outer concentric cylinder at a potential of +\textit{V}. (Figure 1) \\
+\\
+The First method considered to determine the analytical solution for this situation is as follows: We first rewrite Laplace's Equation in polar form and then use a substitution to reduce the order of the differentials, solve in two steps as two first order differential equations and then apply appropriate boundary conditions (See Appendix). \\
+TODO: OUTLINE METHOD OF CONFORMAL MAPPING \\
+
 \begin{equation}
 \phi(r)=\frac{V}{\ln\left|\frac{R_o}{R_i}\right|}\ln\left|\frac{r}{R_i}\right|
 \label{29}
 \end{equation}
 where R_i\) and R_o\) are the radii of the inner and outer cylinder respectively and \textit{r} is the distance from the origin, in this case the centre of the concentric cylinders. \\
-The second case (TODO: REFER TO IMAGE FOR PROBLEM 1) is more complicated in that there is a \theta\) dependence and as such Laplace's equation remains one containing partial differentials. To arrive at a solution we postulate that the potential behaves as if it were solely due to parallel plates in the region outside a circle with a diameter equal to the distance between the plates. We also suppose that the solution along the circumference of this circle takes a cosine form. With these two ideas we can solve for the region inside the circle in polar coordinates user our cosine form as a boundary condition and then say that outside this circle the solution is identical to that for parallel plates: i.e 
+\\
+The second case (Figure 2) is more complicated in that there is a \theta\) dependence and as such Laplace's equation remains one containing partial differentials. To arrive at a solution we postulate that the potential behaves as if it were solely due to parallel plates in the region outside a circle with a diameter equal to the distance between the plates. We also suppose that the solution along the circumference of this circle takes a cosine form. With these two ideas we can solve for the region inside the circle in polar coordinates using our cosine form as a boundary condition and then say that outside this circle the solution is identical to that for parallel plates, which is trivial to solve. i.e: 
 \begin{equation}
 \phi(r,\theta)=(r-R_1)-\frac{V}{R_2-R_1}\cos(\theta)
 \label{}
@@ -89,33 +97,90 @@ inside the circle, i.e \textit{r} < R_2\) and
 \phi(x)=-\frac{2Vx}{L}
 \label{}
 \end{equation}
-outside the circle, i.e \textit{x} = \textit{r}\cos(\theta)\) > \textit{R}_2\) (see Appendix 2). By substituting \textit{r}=\textit{R}_2\) and \textit{x}=\textit{R}_2\cos\theta\) into (7) and (8) respectively it can be seen that the two solutions agree at the boundary, i.e along the circumference of the circle that we had set up.
+outside the circle, i.e \textit{x} = \textit{r}\cos(\theta)\) > \textit{R}_2\) (see Appendix). By substituting \textit{r}=\textit{R}_2\) and \textit{x}=\textit{R}_2\cos\theta\) into (7) and (8) respectively it can be seen that the two solutions agree at the boundary, i.e along the circumference of the circle that we had set up. 
+
+\begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{table.png}
+  \captionof{figure}{Table describing the colour coding of the diagrams}
+  \label{fig:test1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.6\linewidth]{prob0HR.png}
+  \captionof{figure}{The set up for Problem 0}
+  \label{fig:test2}
+\end{minipage}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.5\linewidth]{prob1HR.png}
+  \captionof{figure}{The set up for problem 1}
+  \label{fig:test1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.6\linewidth]{prob24.png}
+  \captionof{figure}{The set up for the edge coupled stripline}
+  \label{fig:test2}
+\end{minipage}
+\end{figure}
 
 
-\section{Solving Numerically For a General Case}
--underlying theory of methods (outline here then detail in appendix maybe) \\
--how they are implemented in the software \\
--how the software is structured (flow diagram or similiar) \\
--how the software is applied to the desired situations \\
--how the results are analysed \\
 
-\section{Results for Specific Cases}
--numerical result=(i.e form of solution, graphs of potential, field, etc) for problem 0 \\
--numerical result for problem 1\\
--numerical result for problem 2.4 \\ 
+\section{Methods 1: Solving Numerically For a General Case}
+ The numerical solver functions, called in the main program, solve for a grid of points that is filled with user defined boundary conditions. To create the grid a user creates an image with colours corresponding to voltages, grounds and other boundary conditions (see Figure 1). Figures 2, 3 and 4 are examples of such input images. The image is processed by a grid function such that it can be solved for using the numerical methods that follow. A solution grid of potential is returned. \\
+(TODO: REFER TO PESUDOCODE OR ACTUAL CODE FILE grid.cpp) \\ 
+\\
+A separate function calculates the E-field grid, i.e the gradient of the potential field, using a symmetric derivative method. The difference in values across the adjacent cells per unit cell are used as an approximation for the derivative for each cell. This difference is calculated using a for loop which takes the value of potential from each grid cell and then the adjacent cells in the x and y directions.
+\\
+(TODO: REFER TO PESUDOCODE OR ACTUAL CODE FILE grad.cpp) \\
+TODO: EXPLAIN PRESENTATION OF RESULTS \\
+TODO: FLOW DIAGRAM OR SIMILIAR \\
 
-\section{Analysis and Discussion of Results}
+
+
+\subsection{The Finite Difference Method}
+-Brief outline of maths behind FDM \\ 
+-how FDM is implemented in FDM.cpp \\
+
+\subsection{Matrix Inversion Method}
+-the maths \\
+-how it is implemented in program \\
+
+\subsection{A Third Method?} \\
+-maths \\
+-implementation \\
+
+
+
+\section{Methods 2: Analysing Results}
+-general structure of analysis section of program \\
+-quantifying error in each numerical method \\
+-comparing to analytical solutions \\
+-comparing between numerical methods \\
+-presentation of comparisons and error \\
+
+
+\section{Results and Discussion}
 -numerical results for all three problems\\
+-metadata for runs \\
 -comparison between numerical and analytical results where applicable\\
 -comparison between different methods of numerical solvers\\
 
 \section{Conclusion and Outlook}
--evaluation of the project - what went well - what would be improved if repeated\\
+-evaluation of the project - what went well - what would be improved if repeated (not just in terms of quality of results but also CPU cost\\
+-might be nice for chris to explain how he has already optimised things compared to previous versions of the program \\
 -outlook for further work e.g extending the software etc \\
 
 
-\section{Appendix 1 - Analytical Solution to Problem 0}
-In order to solve for our situation (TODO REFER TO IMAGE FOR PROBLEM 0) that demonstrates circular symmetry Laplace's equation is first converted to polar form:
+\section{Appendix 1 - Analytical Solutions}
+In order to solve for our situation (Figure 2) that demonstrates circular symmetry Laplace's equation is first converted to polar form:
 \begin{equation}
 \vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
 \label{6}
@@ -152,42 +217,19 @@ The first order differential equation (11) is now trivial to separate and solve 
 \phi = k\ln|r| + C
 \label{11}
 \end{equation}
-Using the fact that potential is 0 at R_i\) and V at R_o\) as boundary conditions gives the particular form of potential as (6). 
+Using the fact that potential is 0 at R_i\) and V at R_o\) as boundary conditions gives the particular form of potential as (6). \\
+\includepdf{A1.pdf}
+\includepdf{A2.pdf}
+\includepdf{A22.pdf}
+\includepdf{A31.pdf}
+\includepdf{A32.pdf}
+\includepdf{CM1.pdf}
+\includepdf{CM2.pdf}
 
-\section{Appendix 2 - Analytical Solution to Problem 1}
-We solve Laplace's equation in polar coordinates
-\begin{equation}
-\vec{\nabla}^2\phi = \frac{\partial^2\phi}{\partial r^2}+\frac{1}{r}\frac{\partial\phi}{\partial r}+\frac{1}{r^2} \frac{\partial^2\phi}{\partial\theta^2}=0
-\label{6}
-\end{equation}
-for the region inside the circle, i.e \textit{r} < R_2\)(TODO REFER TO DIAGRAM FOR PROBLEM 1) with boundary conditions  \\ \phi(R_2, \theta) = -\textit{V}\cos(\theta)\)  \:  \: \:,\: \: \:       \phi(R_1, \theta) = 0\)  \\using a separation of variables method. \\ 
-Let: 
-\begin{equation}
-\phi(r, \theta) = R(r)\Theta(\theta)
-\end{equation}
-Then substituting into Laplace's equation gives:
-\begin{equation}
-R''\Theta + \frac{1}{r}R'\Theta + \frac{1}{r^2}R\Theta'' = 0 
-\end{equation}
-and multiplying by \textit{r}^2\) and dividing through by \textit{R} and \Theta\) gives:
-\begin{equation}
-\frac{r^2R''}{R} + \frac{rR'}{R} = -\frac{\Theta''}{\Theta} = k
-\end{equation}
-where \textit{k} is some constant. \\
-TODO: FINISH COPYING CHRIS' WORKING HERE \\
-Outside the circle we assume a parallel plates situation and solve Laplace's equation in Cartesian coordinates:
-\begin{equation}
- \frac{\partial^2\phi}{\partial^2x} +\frac{\partial^2\phi}{\partial^2y} =0
-\label{6}
-\end{equation} 
-which simplifies to 
-\begin{equation}
-\frac{\partial^2\phi}{\partial^2x}  =0
-\end{equation} since there is no \textit{y} dependence in this situation. This has solution
-\begin{equation}
-\phi(x) = Cx + D
-\end{equation}
-where C and D are some constants. Using the fact that potential at \textit{x} = \textit{L}/2 is -\textit{V} and potential at  \textit{x} = -\textit{L}/2  is \textit{V} for a coordinate system where the y-axis is halfway between the plates as boundary conditions yields the solution at (8).
+
+
+
+
 
 
 
