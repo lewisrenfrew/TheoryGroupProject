@@ -13,17 +13,26 @@
 
 class Grid;
 class GradientGrid;
+
+enum class DifferenceType
+{
+    Absolute,
+    Relative
+};
+
 namespace Cmp
 {
     /// Returns a grid where each cell is the difference between the
     /// two grid provided. Returns None if the two grids are
     /// incompatible. Currently the grids need to be the same size
     Jasnah::Option<Grid>
-    Difference(const Grid& gridA, const Grid& gridB);
+    Difference(const Grid& gridA, const Grid& gridB,
+               DifferenceType diffType = DifferenceType::Absolute);
 
     /// Does the same as above but for gradient grids, same limitations.
     Jasnah::Option<GradientGrid>
-    Difference(const GradientGrid& gridA, const GradientGrid& gridB);
+    Difference(const GradientGrid& gridA, const GradientGrid& gridB,
+               DifferenceType diffType = DifferenceType::Absolute);
 }
 
 #endif
