@@ -14,7 +14,9 @@
 #include <cmath>
 #include <atomic>
 #include <algorithm>
-#include <eigen/Dense>
+#include <Eigen/Dense>
+
+//using Eigen::MatrixXd;
 
 namespace MatrixInversion
 {
@@ -24,9 +26,9 @@ namespace MatrixInversion
          
         
         // get the matrix from grid
-        auto V  = *grid.voltage;
-        Matrix<f64, *grid.lineLength, *grid.numLines> A;
-        Matrix<f64, 1, *grid.numLines> C;
+        Matrix<f64, *grid.lineLength-1, *grid.numLines-1> A;
+        Matrix<f64, 1, *grid.numLines-1 * *grid.lineLength-1 > known;
+        Matrix<f64, 1, *grid.numLines-1 *  *grid.lineLength-1> V;
         
         // find the nodes
         // *grid.lineLength  (how to find the line wrapping)
@@ -35,26 +37,99 @@ namespace MatrixInversion
         {
             for (uint x = 1; x < lineLength - 1; ++x)
             {
-        //     find the nodes adjesent to the node looking at
-        //     take the voltage at that point
-        //     if (value is known)
-            if (fixedPoints.count(y * lineLength + x) != 0)
-            {
-        //         put that value is a cloulum vector C
-                C(1,x)= -V(y * lineLength + x);
-            }        
-        //     else
-            else
-            {
-        //         put in matrix A
-                A(x,y)= -4*V(y * lineLength + x) + V(y * lineLength + x) +V(y * lineLength + x)
-            }
-        // end loop
-            }
-        }
-        // invert A
-        // calculate the V bu mutilpying (invers of A) * (C)
-        // log V
-    }
 
+                //check if node currently at is known or not. if it is
+                //add it to C and if not then add it to A.
+                if (fixedPoints.count(y * lineLength + x) != 0)
+                {
+                    // put that value in the cloulum vector C
+                    known(1,x)= *grid.voltage(y * lineLength + x);
+                    A(x,y) = 1;
+                    //continue;
+                        
+                }
+
+                else
+                {
+                    // put -4 in A at current place
+                    A(x,y)= -4;
+
+                    // put 1 in A one left and one right of current place
+                    A(x+1,y) = 1;
+                    A(x-1,y) = 1;
+
+                    // put 1 in A one up and one down of current place
+                    A(x,y+1) = 1;
+                    A(x,y-1) = 1;
+
+                    // put a 0 in the known  because don't know this point
+                    known(1,x) = 0;
+                    
+                }               
+                // end of x-loop                
+            }           
+            // end y-loop
+        }
+        
+        // calculate the V bu mutilpying (invers of A) * (known)
+        V = A.inverse() * known;
+        // log V
+        for (int i = 1; i < V.cols() ; i++ )
+        {
+            *grid.voltage(i) = V(i-1)
+        }
+        
+    }
+    
 }
+
+
+
+//This is just a back up incase something makes me go back to this method. #oldmethod
+                // // These if statements take care of if the ones adjecent
+                // // are known or not. if they are add them to C and 
+                // // if not then add them to A.
+
+                // // if one to the right
+                // if (fixedPoints.count(y * lineLength + x+1) == 0)
+                // {
+                //     A(x,y) += *grid.voltage(y * lineLength + x+1);
+                // }
+                
+                // else
+                // {
+                //     known(1,x)= -*grid.voltage(y * lineLength + x+1);
+                // }
+                
+                // // if one to the left
+                // if (fixedPoints.count(y * lineLength + x-1) == 0)
+                // {
+                //     A(x,y) += *grid.voltage(y * lineLength + x-1);
+                // }
+                
+                // else
+                // {
+                //     known(1,x)= -*grid.voltage(y * lineLength + x-1);
+                // } 
+                
+                // // if one down
+                // if (fixedPoints.count(y+1 * lineLength + x) == 0)
+                // {
+                //     A(x,y) += *grid.voltage(y+1 * lineLength + x);
+                // }
+                
+                // else
+                // {
+                //     known(1,x)= -*grid.voltage(y+1 * lineLength + x);
+                // }
+                
+                // // if one up
+                // if (fixedPoints.count(y-1 * lineLength + x) == 0)
+                // {
+                //     A(x,y) += *grid.voltage(y-1 * lineLength + x);
+                // }
+                
+                // else
+                // {
+                //     known(1,x)= -*grid.voltage(y-1 * lineLength +x);
+                // }
