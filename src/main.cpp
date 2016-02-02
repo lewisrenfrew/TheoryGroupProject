@@ -146,7 +146,7 @@ CompareProblem0(const std::vector<std::string>& paths)
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
-    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic);
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic, DifferenceType::Relative);
 
     if (!diff)
     {
@@ -164,7 +164,7 @@ CompareProblem0(const std::vector<std::string>& paths)
 
     WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
     WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
-    WriteGnuplotContourFile(analytic);
+    WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
 
     // WriteGridForGnuplot(analytic);
     // WriteGnuplotColormapFile(analytic);

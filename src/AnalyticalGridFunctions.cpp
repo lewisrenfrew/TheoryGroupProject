@@ -20,8 +20,10 @@ namespace AGF
         const f64 cx = (f64)(lineLength-1) / (2.0 * cellsPerMeter);
         const f64 cy = (f64)(numLines-1) / (2.0 * cellsPerMeter);
 
-        for (uint j = 0; j < numLines; j++)
+        const f64 r1Mod = std::sqrt(Square(r1) + Square(centerFactor));
+        const f64 r2Mod = std::sqrt(Square(r2) + Square(centerFactor));
 
+        for (uint j = 0; j < numLines; j++)
         {
             // loops over x
             for (uint i = 0; i < lineLength; i++)
@@ -29,14 +31,13 @@ namespace AGF
                 const f64 x = (f64)i / cellsPerMeter;
                 const f64 y = (f64)j / cellsPerMeter;
                 // tests whether a point (i, j) lies inside the circle of radius r1
-                if (Square(x-cx) + Square(y-cy) <=  Square(r1) + Square(centerFactor))
+                if (Square(x-cx) + Square(y-cy) <=  Square(r1Mod) + Square(centerFactor))
                 {
                     // sets potential to 0 at that point
                     grid.voltages.push_back(0.0);
                 }
                 // tests whether a point (i, j) lies outside the circle of radius r2
-                else if (Square(x-cx) + Square(y-cy) > Square(r2))
-
+                else if (Square(x-cx) + Square(y-cy) > Square(r2Mod) + Square(centerFactor))
                 {
                     // sets potential to 10 for such points - matches our image
                     grid.voltages.push_back(10.0);
@@ -44,7 +45,7 @@ namespace AGF
                 else
                 {
                     // sets potential to be our solution for all other points
-                    grid.voltages.push_back(voltage/log(r2/r1)*(log(std::hypot(x-cx, y-cy)/r1)));
+                    grid.voltages.push_back(voltage/log(r2Mod/r1Mod)*(std::log(std::hypot(x-cx, y-cy)/(r1Mod))));
                 }
 
 
