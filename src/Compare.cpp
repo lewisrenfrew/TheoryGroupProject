@@ -8,10 +8,12 @@
 #include "Grid.hpp"
 #include "GradientGrid.hpp"
 
+#include <cmath>
+
 namespace Cmp
 {
     Jasnah::Option<Grid>
-    Difference(const Grid& gridA, const Grid& gridB)
+    Difference(const Grid& gridA, const Grid& gridB, DifferenceType diffType)
     {
         if (gridA.lineLength != gridB.lineLength
             && gridA.numLines != gridB.numLines)
@@ -23,16 +25,30 @@ namespace Cmp
         result.lineLength = gridA.lineLength;
         result.numLines = gridA.numLines;
 
-        for (uint i = 0; i < gridA.voltages.size(); ++i)
+        switch (diffType)
         {
-            result.voltages.push_back(gridA.voltages[i] - gridB.voltages[i]);
+        case DifferenceType::Relative:
+        {
+            for (uint i = 0; i < gridA.voltages.size(); ++i)
+            {
+                result.voltages.push_back(gridA.voltages[i] - gridB.voltages[i]);
+            }
+        } break;
+
+        case DifferenceType::Absolute:
+        {
+            for (uint i = 0; i < gridA.voltages.size(); ++i)
+            {
+                result.voltages.push_back(std::abs(gridA.voltages[i] - gridB.voltages[i]));
+            }
+        } break;
         }
 
         return result;
     }
 
     Jasnah::Option<GradientGrid>
-    Difference(const GradientGrid& gridA, const GradientGrid& gridB)
+    Difference(const GradientGrid& gridA, const GradientGrid& gridB, DifferenceType diffType)
     {
         if (gridA.lineLength != gridB.lineLength
             && gridA.numLines != gridB.numLines)
@@ -44,9 +60,26 @@ namespace Cmp
         result.lineLength = gridA.lineLength;
         result.numLines = gridA.numLines;
 
-        for (uint i = 0; i < gridA.gradients.size(); ++i)
+
+        switch (diffType)
         {
-            result.gradients.push_back(gridA.gradients[i] - gridB.gradients[i]);
+        case DifferenceType::Relative:
+        {
+            for (uint i = 0; i < gridA.gradients.size(); ++i)
+            {
+                result.gradients.push_back(gridA.gradients[i] - gridB.gradients[i]);
+            }
+        } break;
+
+        case DifferenceType::Absolute:
+        {
+            for (uint i = 0; i < gridA.gradients.size(); ++i)
+            {
+                // result.gradients.push_back(std::abs(gridA.gradients[i] - gridB.gradients[i]));
+                V2d absDiff(std::abs(gridA.gradients[i].x - gridB.gradients[i].x),
+                            std::abs(gridA.gradients[i].y - gridB.gradients[i].y));
+            }
+        } break;
         }
 
         return result;
