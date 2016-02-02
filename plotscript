@@ -1,24 +1,20 @@
 #!/bin/bash
 #command line parameters (maximum error,problem number)
 
-#set error for test and problem number 
-#ERROR='0.01'
-#PROBLEM="p0"
-
+#take command line arguments
 ERROR="$1"
 PROBLEM="$2"
 
 #define file and folder name for test run
 NAME="problem${ERROR}_${PROBLEM}"
 
-echo "$NAME"
 
-#creates directory 
+#check if directory exists
 if [ -d ./Results/$NAME ]; then
 	echo "directory exists"
 	rm -r ./Results/$NAME
 	mkdir ./Results/$NAME
-	echo "directory created"
+	echo "directory deleted and new one created"
 
 else
 	mkdir ./Results/$NAME
@@ -32,8 +28,8 @@ cp ./Plot/*.dat ./Results/$NAME
 #create plots
 for X in $(ls ./Plot/*.gpi)
 do
-	SHORT="${X:7}"
-	FILENAME=$(echo "$SHORT" | cut -d. -f1) #remove filetype from name
+	SHORT="${X:7}" #remove path from X
+	FILENAME=$(echo "$SHORT" | cut -d. -f1) #remove filetype from X
 	mkdir -p ./Results/$NAME/$FILENAME #create sub directory for diff plots
 	echo "Created Directory ./Results/$NAME/$FILENAME"
 	gnuplot "$X" #run gnuplot wiht config files
