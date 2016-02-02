@@ -16,8 +16,9 @@ namespace AGF
         grid.numLines = numLines;
         // loop over y
         grid.voltages.reserve(numLines*lineLength);
-        const f64 cx = (f64)lineLength / 2.0 / cellsPerMeter;
-        const f64 cy = (f64)numLines / 2.0 / cellsPerMeter;
+        const f64 centerFactor = 0.5/ cellsPerMeter;
+        const f64 cx = (f64)(lineLength-1) / (2.0 * cellsPerMeter);
+        const f64 cy = (f64)(numLines-1) / (2.0 * cellsPerMeter);
 
         for (uint j = 0; j < numLines; j++)
 
@@ -28,14 +29,13 @@ namespace AGF
                 const f64 x = (f64)i / cellsPerMeter;
                 const f64 y = (f64)j / cellsPerMeter;
                 // tests whether a point (i, j) lies inside the circle of radius r1
-                if (pow((x-cx),2) + pow((y-cy),2) <=  pow(r1,2.0) )
-
+                if (Square(x-cx) + Square(y-cy) <=  Square(r1) + Square(centerFactor))
                 {
                     // sets potential to 0 at that point
                     grid.voltages.push_back(0.0);
                 }
                 // tests whether a point (i, j) lies outside the circle of radius r2
-                else if (pow((x-cx),2) + pow((y-cy),2) > pow(r2,2.0) )
+                else if (Square(x-cx) + Square(y-cy) > Square(r2))
 
                 {
                     // sets potential to 10 for such points - matches our image
@@ -68,8 +68,8 @@ namespace AGF
         grid.numLines = numLines;
         // loops over y
         grid.voltages.reserve(numLines*lineLength);
-        const f64 cx = (f64)lineLength / 2.0 / cellsPerMeter;
-        const f64 cy = (f64)numLines / 2.0 / cellsPerMeter;
+        const f64 cx = (f64)(lineLength-1) / 2.0 / cellsPerMeter;
+        const f64 cy = (f64)(numLines-1) / 2.0 / cellsPerMeter;
 
         for (uint j = 0; j < numLines; j++)
         {
