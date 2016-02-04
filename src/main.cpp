@@ -146,7 +146,7 @@ CompareProblem0(const std::vector<std::string>& paths)
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
-    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic, DifferenceType::Relative);
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic, DifferenceType::Absolute);
 
     if (!diff)
     {

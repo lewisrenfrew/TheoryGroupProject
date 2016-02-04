@@ -16,12 +16,8 @@ namespace AGF
         grid.numLines = numLines;
         // loop over y
         grid.voltages.reserve(numLines*lineLength);
-        const f64 centerFactor = 0.5/ cellsPerMeter;
         const f64 cx = (f64)(lineLength-1) / (2.0 * cellsPerMeter);
         const f64 cy = (f64)(numLines-1) / (2.0 * cellsPerMeter);
-
-        const f64 r1Mod = std::sqrt(Square(r1) + Square(centerFactor));
-        const f64 r2Mod = std::sqrt(Square(r2) + Square(centerFactor));
 
         for (uint j = 0; j < numLines; j++)
         {
@@ -30,14 +26,15 @@ namespace AGF
             {
                 const f64 x = (f64)i / cellsPerMeter;
                 const f64 y = (f64)j / cellsPerMeter;
+                const f64 r = std::hypot(x-cx, y-cy);
                 // tests whether a point (i, j) lies inside the circle of radius r1
-                if (Square(x-cx) + Square(y-cy) <=  Square(r1Mod) + Square(centerFactor))
+                if (r < r1)
                 {
                     // sets potential to 0 at that point
-                    grid.voltages.push_back(0.0);
+                    grid.voltages.push_back(00.0);
                 }
                 // tests whether a point (i, j) lies outside the circle of radius r2
-                else if (Square(x-cx) + Square(y-cy) > Square(r2Mod) + Square(centerFactor))
+                else if (r > r2)
                 {
                     // sets potential to 10 for such points - matches our image
                     grid.voltages.push_back(10.0);
@@ -45,7 +42,7 @@ namespace AGF
                 else
                 {
                     // sets potential to be our solution for all other points
-                    grid.voltages.push_back(voltage/log(r2Mod/r1Mod)*(std::log(std::hypot(x-cx, y-cy)/(r1Mod))));
+                    grid.voltages.push_back(voltage/log(r2/r1)*(std::log(std::hypot(x-cx, y-cy)/(r1))));
                 }
 
 
@@ -81,13 +78,13 @@ namespace AGF
                 const f64 y = (f64)j / cellsPerMeter;
                 const f64 r = std::hypot(x-cx,y-cy);
                 // tests whether a point i, j lies inside circle of radius r1
-                if (std::abs(r) <=  r1)
+                if (r <=  r1)
                 {
                     // sets potential to zero for such points
                     grid.voltages.push_back(0.0);
                 }
                 // tests whether a point lies outwith circle of radius r2
-                else if (std::abs(r) >  r2)
+                else if (r >  r2)
                 {
                     // potential takes form of parralel plate solution at such points
                     // (SHOULD WE JUST ASSUME THAT POLAR SOLUTION BELOW CORRECTLY DESCRIBES POTENTIAL OUTSIDE r2 AND REMOVE THIS TEST??
