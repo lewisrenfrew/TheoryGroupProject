@@ -1,0 +1,38 @@
+/* Prevent text selection http://stackoverflow.com/a/32299832/3847013 */
+.noselect {
+    cursor: default;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.sec-title {
+    text-transform: uppercase;
+    font-size: 1.4rem;
+    /* letter-spacing: .2rem; */
+    font-weight: 600;
+}
+
+.section {
+    border-top: 1px solid #eee;
+    padding: 4rem 0;
+    margin-bottom: 0;
+}
+
+.top-title {
+    padding-top: 2rem;
+}
+
+/* automatically limit image to container size */
+img {
+    max-height: 100%;
+    max-width: 100%
+}
+
+.im-auto-scale {
+    max-width: 100%;
+    height: auto;
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <script src="preprocess.js"></script>
+  <head>
+    <meta charset="UTF-8">
+    <title>Gridle: Preprocess</title>
+    <link href="fonts/Raleway.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/skeleton.css">
+    <link rel="stylesheet" href="css/gridle.css">
+  </head>
+  <body>
+    <div class="container" id="top">
+      <div class="row top-title">
+        <div class="six columns">
+          <h3 class="noselect" align="left">Preprocess</h3>
+        </div>
+        <div class="six columns">
+          <div align="right">
+            <a class="button noselect" href="./index.html">Back</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container section noselect">
+      <div class="row">
+        <div class="three columns">
+          <input type="button" value="Load Image" id="load" onclick="loadImage()">
+        </div>
+        <div class="nine columns" id="imgHolder" align="center">
+          <!-- A 1x1 transparent gif -->
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA="
+               id="mainImage"
+               class="im-auto-scale"
+               onload="resizeImg(this);">
+        </div>
+      </div>
+      <div class="row">
+        <div class="three columns">
+          <input type="button" value="Preprocess" id="load"
+                 onclick="preprocessImg(document.getElementById('mainImg'));">
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <script src="page.js"></script>
+  <head>
+    <meta charset="UTF-8">
+    <title>Gridle</title>
+    <link href="fonts/Raleway.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/skeleton.css">
+    <link rel="stylesheet" href="css/gridle.css">
+  </head>
+  <body>
+    <div class="container" id="top">
+      <h3 class="noselect" align="center">Gridle</h3>
+      <div class="section">
+        <p class="noselect"> Welcome to Gridle a tool for simulating Potential and Electric Fields in (charge-free)
+          electrostatic problems. If this is your first time using Gridle then it is recommended to
+          <code>Preprocess</code>, <code>Simulate</code> and then <code>View</code> your system using
+          the buttons below. For more information about the data input format and the information that
+          needs to be provided please press the <code>User Manual</code> button. Please scroll down
+          for creator and attribution information.</p>
+        <div class="row" align="center">
+          <a class="button" href="./preprocess.html">Preprocess</a>
+          <input type="button" value="Simulate">
+          <input type="button" value="View">
+          <input type="button" value="Load">
+        </div>
+        <div class="row" align="center">
+          <input type="button" value="User Manual">
+        </div>
+      </div>
+    </div>
+</div>
+<div class="container section" id=authors>
+  <h6 class="noselect sec-title">Authors</h6>
+  <p class="noselect">Gridle was designed and built in 2016 by University of Glasgow third year
+    Theoretical Physics group project group 3:</p>
+  <ul class="noselect"><ul>
+      <li>Lennart Gundelach</li>
+      <li>Chris Osborne</li>
+      <li>Fionn Ó Súilleabháin</li>
+      <li>Lewis Renfrew</li>
+      <li>Olle Windeman</li>
+  </ul></ul>
+</div>
+<div class="container section" id=attribution>
+  <h6 class="noselect sec-title">Attribution</h6>
+  <p class="noselect">The C++ core of Gridle is based on the work of:</p>
+  <ul class="noselect"><ul>
+      <li>Sean T. Barrett: <code>stb_image.h</code> <b>Public Domain</b></li>
+      <li>Boost C++ Libraries: <code>boost align</code> (and dependencies) <b>Boost Public License</b></li>
+      <li>Eigen <b>Mozilla Public License 2</b></li>
+      <li><code>rapidjson</code> <b>Mix of MIT, JSON and BSD licenses</b></li>
+      <li>Templatized C++ Command Line Parser <code>TCLAP</code> <b>MIT license</b></li>
+      <li>Remove testing? Otherwise <code>catch.hpp</code></li>
+  </ul></ul>
+  <p class="noselect">Additionally this front end is built using:</p>
+  <ul class="noselect"><ul>
+      <li>Github's Electron framework <b>MIT License</b></li>
+      <li>Skeleton CSS Framework <b>MIT License</b></li>
+  </ul></ul>
+</div>
+</body>
+</html>
