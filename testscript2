@@ -9,9 +9,10 @@ PRO=$2
 P1="p0"
 P2="p1"
 
+GRID_PARAM="${2:1}"
+echo "grid param is $GRID_PARAM"
+
 if [ $2 == $P1 ]; then
-	GRID_PARAM=""${2:1}
-	echo "grid param is $GRID_PARAM"
 	#write sed argument into nex file
 	echo "s/\(\\\"ImagePath\\\" *:*\).*/\\1 \"prob0MR.png\",/" > sed.text
 	#call sed with file as argument
@@ -26,9 +27,6 @@ if [ $2 == $P1 ]; then
 	sed -i -f sed.text config.json
 	rm sed.text
 elif [ $2 == $P2 ]; then
-	
-	GRID_PARAM=""${2:1}
-	echo "grid param is $GRID_PARAM"
 	#write sed argument into nex file
 	echo "s/\(\\\"ImagePath\\\" *:*\).*/\\1 \"prob1.png\",/" > sed.text
 	#call sed with file as argument
