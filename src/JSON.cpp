@@ -475,18 +475,21 @@ namespace Cfg
 
         writer.EndObject();
 
-        std::string fileName(tmpnam(nullptr));
-        FILE* tempFile = fopen(fileName.c_str(), "w");
-        if (!tempFile)
-        {
-            fclose(tempFile);
-            return false;
-        }
+        // std::string fileName(tmpnam(nullptr));
+        // FILE* tempFile = fopen(fileName.c_str(), "w");
+        // if (!tempFile)
+        // {
+        //     fclose(tempFile);
+        //     return false;
+        // }
 
-        fputs(sb.GetString(), tempFile);
-        fputs(fileName.c_str(), stderr);
+        // fputs(sb.GetString(), tempFile);
+        // fputs(fileName.c_str(), stderr);
 
-        fclose(tempFile);
+        // fclose(tempFile);
+        puts("**JSON_START**");
+        puts(sb.GetString());
+        puts("**EOF**");
         return true;
     }
 }

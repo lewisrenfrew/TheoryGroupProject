@@ -36,3 +36,19 @@ img {
     max-width: 100%;
     height: auto;
 }
+
+/* Only use if under a certain resolution? */
+.pixels {
+    image-rendering: pixelated;
+}
+
+.color-box {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    background-color: #ccc;
+    position: relative;
+    left: 2rem;
+    /* top: 5px; */
+    border: 1px solid #000;
+}

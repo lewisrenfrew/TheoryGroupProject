@@ -25,21 +25,51 @@
     <div class="container section noselect">
       <div class="row">
         <div class="three columns">
-          <input type="button" value="Load Image" id="load" onclick="loadImage()">
+                  <div class="row">
+          <input type="button" class="u-full-width" value="Load Image" id="load" onclick="loadImage()">
+          </div>
+          <div class="row">
+          <input type="button" class="u-full-width" value="Preprocess" id="load"
+                 onclick="preprocessImg(document.getElementById('mainImg'));">
+          </div>
+          <div class="row">
+            <label for="simMode">Simulation Mode:</label>
+            <select class="u-full-width" id="simMode">
+              <option value="singleSim">Normal Simulation</option>
+              <option value="compareProb0">Compare with Prob. 0</option>
+              <option value="compareProb1">Compare with Prob. 1</option>
+              <option value="compare2">Compare 2 Simulations</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="simType">Simulation Method:</label>
+            <select class="u-full-width" id="simType">
+              <option value="FDM">Finite Difference Method</option>
+              <option value="MI">Matrix Inversion</option>
+              <option value="AMR">Adaptive Mesh FDM</option>
+              <option value="SOR">Successive Over Relaxation</option>
+            </select>
+          </div>
         </div>
         <div class="nine columns" id="imgHolder" align="center">
           <!-- A 1x1 transparent gif -->
           <img src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA="
-               id="mainImage"
-               class="im-auto-scale"
+               id="mainImg"
+               class="im-auto-scale pixels"
                onload="resizeImg(this);">
         </div>
       </div>
-      <div class="row">
-        <div class="three columns">
-          <input type="button" value="Preprocess" id="load"
-                 onclick="preprocessImg(document.getElementById('mainImg'));">
-        </div>
+      <div class="container noselect" id="colorData">
+        <!-- <div class="row"> -->
+        <!--   <div class="six columns"> -->
+        <!--     <label for="maxRelErr">Max Rel. Error</label> -->
+        <!--     <input type="number" class="u-full-width" placeholder="0.0001" id="maxRelErr"> -->
+        <!--   </div> -->
+        <!--   <div class="six columns"> -->
+        <!--     <label for="maxRelErr">Max Rel. Error</label> -->
+        <!--     <input type="number" class="u-full-width" placeholder="0.0001" id="maxRelErr"> -->
+        <!--   </div> -->
+        <!-- </div> -->
       </div>
     </div>
   </body>
