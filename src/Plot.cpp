@@ -81,7 +81,7 @@ namespace Plot
         fprintf(file,
                 // "set terminal pngcairo size 2560,1440\n"
                 // "set output \"Grid.png\"\n"
-                "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+                "set terminal canvas rounded size 700,500 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
                 "set output \"Grid.html\"\n"
                 "load 'Plot/MorelandColors.plt'\n"
                 "set xlabel \"x\"\nset ylabel \"y\"\n"
@@ -115,7 +115,7 @@ namespace Plot
         fprintf(file,
                 // "set terminal pngcairo size 2560,1440\n"
                 // "set output \"GridContour.png\"\n"
-                "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
+                "set terminal canvas rounded size 700,500 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
                 "set output \"GridContour.html\"\n"
                 "load 'Plot/MorelandColors.plt'\n"
                 "set key outside\n"
@@ -157,7 +157,7 @@ namespace Plot
                 // "set terminal png size 2560,1440\n"
                 // "set output \"GradientGrid.png\"\n"
                 // "set terminal canvas rounded size 1280,720 enhanced mousing fsize 10 lw 1.6 fontscale 1 standalone\n"
-                "set terminal canvas butt size 1280,720 enhanced mousing fsize 10 lw 1 fontscale 1 standalone\n"
+                "set terminal canvas butt size 700,500 enhanced mousing fsize 10 lw 1 fontscale 1 standalone\n"
                 "set output \"GradientGrid.html\"\n"
                 "load 'Plot/MorelandColors.plt'\n"
                 "set xlabel \"x\"\nset ylabel \"y\"\n"

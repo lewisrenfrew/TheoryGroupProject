@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <script src="preprocess.js"></script>
+  <head>
+    <meta charset="UTF-8">
+    <title>Gridle: View Simulation</title>
+    <link href="fonts/Raleway.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/skeleton.css">
+    <link rel="stylesheet" href="css/gridle.css">
+  </head>
+  <body>
+    <div class="container" id="top">
+      <div class="row top-title">
+        <div class="six columns">
+          <h3 class="noselect" align="left">View Simulation</h3>
+        </div>
+        <div class="six columns">
+          <div align="right">
+            <a class="button noselect" href="./index.html">Back</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container section noselect" align="center">
+      <div class="row">
+        <label for="simType">Output Graph</label>
+        <select class="u-full-width" id="simType">
+            <option value="FDM">Finite Difference Method</option>
+            <option value="MI">Matrix Inversion</option>
+            <option value="AMR">Adaptive Mesh FDM</option>
+            <option value="SOR">Successive Over Relaxation</option>
+        </select>
+      </div>
+      <div class="row">
+        <!-- <iframe src="../Grid.html" width="100%" style="height: 100vh;"> -->
+        <embed src="../Grid.html" width="100%" style="height: 100vh;">
+      </div>
+    </div>
+    <div class="container noselect" id="colorData">
+      <!-- <div class="row"> -->
+      <!--   <div class="six columns"> -->
+      <!--     <label for="maxRelErr">Max Rel. Error</label> -->
+      <!--     <input type="number" class="u-full-width" placeholder="0.0001" id="maxRelErr"> -->
+      <!--   </div> -->
+      <!--   <div class="six columns"> -->
+      <!--     <label for="maxRelErr">Max Rel. Error</label> -->
+      <!--     <input type="number" class="u-full-width" placeholder="0.0001" id="maxRelErr"> -->
+      <!--   </div> -->
+      <!-- </div> -->
+    </div>
+  </body>
+</html>
