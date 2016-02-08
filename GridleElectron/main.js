@@ -17,10 +17,10 @@ app.on('window-all-closed', function()
 app.on('ready', function()
        {
            mainWindow = new BrowserWindow({width: 960,
-                                    height: 720,
-                                    icon: './Skeleton-2.0.4/images/favicon.png',
-                                    // 'title-bar-style': 'hidden'
-                                    // frame: false
+                                           height: 720,
+                                           icon: './Skeleton-2.0.4/images/favicon.png',
+                                           minWidth: 800,
+                                           minHeight: 600
                                           });
            mainWindow.loadURL('file://' + __dirname + '/index.html');
 
