@@ -30,10 +30,19 @@ namespace Cfg
         Jasnah::Option<f64> analyticOuter;
     };
 
+    struct JSONPreprocConfigVars
+    {
+        std::string imgPath;
+        std::vector<RGBA> colorMap;
+    };
+
     /// Loads the config file path, returns an Optional set of data,
     /// none indicating that there was an error
     Jasnah::Option<GridConfigData>
     LoadGridConfigFile(const char* path);
+
+    bool
+    WriteJSONPreprocFile(const JSONPreprocConfigVars& vars);
 }
 
 #endif

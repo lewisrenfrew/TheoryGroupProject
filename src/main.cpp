@@ -32,7 +32,8 @@ enum class OperationMode
     SingleSimulation,
     CompareProblem0,
     CompareProblem1,
-    CompareTwo
+    CompareTwo,
+    Preprocess
 };
 
 struct CommandLineFlags
@@ -67,7 +68,10 @@ ParseArguments(const int argc, const char* argv[])
         SwitchArg cmp0("0", "compareprob0", "Compares the input file against the analytical solution to problem 0", false);
         SwitchArg cmp1("1", "compareprob1", "Compares the input file against the analytical solution to problem 1", false);
         SwitchArg cmp2("c", "compare", "Compares the the two input files against each other", false);
-        std::vector<Arg*> cmpArgs({&cmp0, &cmp1, &cmp2, &infoFile});
+        SwitchArg preprocess1("E", "preprocess",
+                              "Preprocesses the image outputting the json to be filled in with required info",
+                              false);
+        std::vector<Arg*> cmpArgs({&cmp0, &cmp1, &cmp2, &infoFile, &preprocess1});
         cmd.xorAdd(cmpArgs);
 
         // TODO(Chris): Need params for analytical solutions - json?
@@ -95,8 +99,15 @@ ParseArguments(const int argc, const char* argv[])
             ret.mode = OperationMode::CompareTwo;
             ret.inputPaths = cmpNames.getValue();
         }
+        else if (preprocess1.getValue())
+        {
+            ret.mode = OperationMode::Preprocess;
+            ret.inputPaths = cmpNames.getValue();
+        }
         else
         {
+            // NOTE(Chris): Maybe move to same behaviour as others?
+            // SwitchArg + Unlabeled
             ret.mode = OperationMode::SingleSimulation;
             ret.inputPaths = {infoFile.getValue()};
         }
@@ -282,6 +293,48 @@ SingleSimulation(const std::string& path)
     return EXIT_SUCCESS;
 }
 
+static
+int
+Preprocess(const std::string& path)
+{
+    Image img;
+    if (!img.LoadImage(path.c_str(), 4))
+    {
+        return EXIT_FAILURE;
+    }
+
+    auto info = img.GetInfo();
+
+    u32* texel = (u32*)img.GetData();
+
+    std::vector<RGBA> tx;
+    tx.assign(texel,
+              texel + (info.numScanlines
+                       * info.pxPerLine));
+
+    std::sort(tx.begin(), tx.end());
+    tx.erase(std::unique(tx.begin(), tx.end()), tx.end());
+    // NOTE(Chris): Ignore White
+    auto iter = std::find(tx.begin(), tx.end(), RGBA(255, 255, 255, 255));
+    if (iter != tx.end())
+        tx.erase(iter);
+
+    // for (const auto& val : tx)
+    // {
+    //     LOG("%u, %u, %u", (unsigned)val.r, (unsigned)val.g, (unsigned)val.b);
+    // }
+
+    Cfg::JSONPreprocConfigVars json;
+    json.imgPath = path;
+    json.colorMap = tx;
+
+    if (!Cfg::WriteJSONPreprocFile(json))
+        return EXIT_FAILURE;
+
+
+    return EXIT_SUCCESS;
+}
+
 #ifndef CATCH_CONFIG_MAIN
 int main(int argc, const char* argv[])
 {
@@ -308,6 +361,11 @@ int main(int argc, const char* argv[])
     case OperationMode::SingleSimulation:
     {
         result = SingleSimulation(args.inputPaths.front());
+    } break;
+
+    case OperationMode::Preprocess:
+    {
+        result = Preprocess(args.inputPaths.front());
     } break;
 
     default:

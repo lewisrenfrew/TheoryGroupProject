@@ -34,6 +34,21 @@ union RGBA
     operator=(const RGBA&) = default;
     inline RGBA&
     operator=(u32 other) { rgba = other; return *this; }
+    inline bool
+    operator==(RGBA other) const
+    { return this->rgba == other.rgba; }
+    inline bool
+    operator<(RGBA other) const
+    { return this->rgba < other.rgba; }
+    inline bool
+    operator>(RGBA other) const
+    { return this->rgba > other.rgba; }
+    inline bool
+    operator>=(RGBA other) const
+    { return this->rgba >= other.rgba; }
+    inline bool
+    operator<=(RGBA other) const
+    { return this->rgba <= other.rgba; }
 };
 
 /// Data that can be returned from the Image class

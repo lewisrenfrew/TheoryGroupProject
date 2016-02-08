@@ -10,6 +10,7 @@
 #include <rapidjson/filereadstream.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
+#include <rapidjson/prettywriter.h>
 #include <cmath>
 #include <cstdio>
 #include <unordered_map>
@@ -429,5 +430,63 @@ namespace Cfg
         }
 
         return result;
+    }
+
+    bool
+    WriteJSONPreprocFile(const JSONPreprocConfigVars& vars)
+    {
+        StringBuffer sb;
+        PrettyWriter<StringBuffer> writer(sb);
+
+        // NOTE(Chris): This behaves very similarly to the old fixed-function OpenGL pipeline
+        writer.StartObject();
+        writer.String("ImagePath");
+        writer.String(vars.imgPath.c_str());
+
+        writer.String("ColorMap");
+        writer.StartArray();
+        for (const auto col : vars.colorMap)
+        {
+            writer.StartObject();
+            writer.String("r");
+            writer.Uint(col.r);
+            writer.String("g");
+            writer.Uint(col.g);
+            writer.String("b");
+            writer.Uint(col.b);
+            writer.EndObject();
+        }
+        writer.EndArray();
+
+        writer.String("PixelsPerMeter");
+        writer.Double(100.0);
+
+        writer.String("MaxIterations");
+        writer.Uint64(1000000);
+
+        writer.String("MaxRelErr");
+        writer.Double(0.00001);
+
+        // TODO(Chris): We could check and output the correct zip info
+        writer.String("HorizontalZip");
+        writer.Bool(false);
+        writer.String("VerticalZip");
+        writer.Bool(false);
+
+        writer.EndObject();
+
+        std::string fileName(tmpnam(nullptr));
+        FILE* tempFile = fopen(fileName.c_str(), "w");
+        if (!tempFile)
+        {
+            fclose(tempFile);
+            return false;
+        }
+
+        fputs(sb.GetString(), tempFile);
+        fputs(fileName.c_str(), stderr);
+
+        fclose(tempFile);
+        return true;
     }
 }
