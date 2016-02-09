@@ -16,6 +16,14 @@
 
 namespace Cfg
 {
+    enum class CalculationMode
+    {
+        FiniteDiff,
+        MatrixInversion,
+        SOR,
+        AMR
+    };
+
     struct GridConfigData
     {
         std::string imagePath;
@@ -28,6 +36,7 @@ namespace Cfg
         Jasnah::Option<bool> verticZip;
         Jasnah::Option<f64> analyticInner;
         Jasnah::Option<f64> analyticOuter;
+        Jasnah::Option<CalculationMode> mode;
     };
 
     struct JSONPreprocConfigVars

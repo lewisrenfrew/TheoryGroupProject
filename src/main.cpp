@@ -120,6 +120,42 @@ ParseArguments(const int argc, const char* argv[])
     }
 }
 
+// TODO(Chris): Could solve this with polymorphism, but we would still need instances of each
+static
+void
+DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTol, f64 maxIter)
+{
+    if (!mode)
+    {
+        LOG("Using FDM");
+        FDM::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+        return;
+    }
+
+    switch (*mode)
+    {
+    case Cfg::CalculationMode::FiniteDiff:
+    {
+        FDM::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+    } break;
+
+    case Cfg::CalculationMode::MatrixInversion:
+    {
+        LOG("Not yet implemented");
+    } break;
+
+    case Cfg::CalculationMode::SOR:
+    {
+        LOG("Not yet implemented");
+    } break;
+
+    case Cfg::CalculationMode::AMR:
+    {
+        LOG("Not yet implemented");
+    } break;
+    }
+}
+
 static
 int
 CompareProblem0(const std::vector<std::string>& paths)
@@ -142,7 +178,7 @@ CompareProblem0(const std::vector<std::string>& paths)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
@@ -205,7 +241,7 @@ CompareProblem1(const std::vector<std::string>& paths)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
@@ -278,7 +314,7 @@ SingleSimulation(const std::string& path)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));

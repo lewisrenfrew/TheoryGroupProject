@@ -424,6 +424,43 @@ namespace Cfg
                 result.analyticOuter = iter->value.GetDouble();
             } break;
 
+            case StringHash("CalculationMode"):
+            {
+                if (!iter->value.IsString())
+                {
+                    LOG("CalculationMode must be a string");
+                    return Jasnah::None;
+                }
+
+                switch (StringHash(iter->value.GetString()))
+                {
+                case StringHash("FiniteDiff"):
+                {
+                    result.mode = CalculationMode::FiniteDiff;
+                } break;
+
+                case StringHash("MatrixInversion"):
+                {
+                    result.mode = CalculationMode::MatrixInversion;
+                } break;
+
+                case StringHash("SOR"):
+                {
+                    result.mode = CalculationMode::SOR;
+                } break;
+
+                case StringHash("AMR"):
+                {
+                    result.mode = CalculationMode::AMR;
+                } break;
+
+                default:
+                {
+                    LOG("Unknown CalculationMode, using default");
+                }
+                }
+            } break;
+
             default:
                 LOG("Unknown key \"%s\", ignoring", iter->name.GetString());
             }
