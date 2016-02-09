@@ -6,6 +6,7 @@
    ========================================================================== */
 #include "GlobalDefines.hpp"
 #include "FDM.hpp"
+#include "MatrixInversion.hpp"
 #include "AnalyticalGridFunctions.hpp"
 #include "Compare.hpp"
 #include "Grid.hpp"
@@ -131,7 +132,8 @@ CompareProblem0(const std::vector<std::string>& paths)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    MatrixInversion::MatrixInversionMethod(&grid, zeroTol.ValueOr(0.001) ,maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
@@ -194,7 +196,8 @@ CompareProblem1(const std::vector<std::string>& paths)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    MatrixInversion::MatrixInversionMethod(&grid, zeroTol.ValueOr(0.001) ,maxIter.ValueOr(20000)); 
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
@@ -267,7 +270,8 @@ SingleSimulation(const std::string& path)
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
-    FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+     MatrixInversion::MatrixInversionMethod(&grid, zeroTol.ValueOr(0.001) ,maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));

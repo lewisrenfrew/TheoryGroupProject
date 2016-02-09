@@ -16,120 +16,134 @@
 #include <algorithm>
 #include <Eigen/Dense>
 
-//using Eigen::MatrixXd;
-
 namespace MatrixInversion
 {
     void
     MatrixInversionMethod(Grid* grid, const f64 stopPoint , const u64 maxIter)
     {
-         
-        
+        using namespace Eigen;
         // get the matrix from grid
-        Matrix<f64, *grid.lineLength-1, *grid.numLines-1> A;
-        Matrix<f64, 1, *grid.numLines-1 * *grid.lineLength-1 > known;
-        Matrix<f64, 1, *grid.numLines-1 *  *grid.lineLength-1> V;
+        // Matrix<f64, Dynamic, Dynamic> Ad;
+        // Matrix<f64, 1, Dynamic> known;
+        // Matrix<f64, 1, Dynamic> V;
+        //ArrayXXf A = ArrayXXf::Zero(grid->lineLength*grid->numLines
+        //, grid->lineLength * grid->numLines);
         
-        // find the nodes
-        // *grid.lineLength  (how to find the line wrapping)
-        // start loop through number of nodes
-        for (int y = 1; y < numLines -1; ++y)
-        {
-            for (uint x = 1; x < lineLength - 1; ++x)
-            {
+        MatrixXd A = MatrixXd::Zero(grid->lineLength * grid->numLines
+                      , grid->lineLength * grid->numLines);
+              
+        MatrixXd V = MatrixXd::Zero(1,(*grid).lineLength * (*grid).numLines);
+        MatrixXd known(1,(*grid).lineLength * (*grid).numLines);
+        int k=0;
+        int j=1;
 
-                //check if node currently at is known or not. if it is
-                //add it to C and if not then add it to A.
-                if (fixedPoints.count(y * lineLength + x) != 0)
+        // find the nodes
+        // grid->lineLength  (how to find the line wrapping)
+        // start loop through number of nodes
+        for (int y = 0; y < A.cols() -2;)
+        {
+            
+            //std::cout<<"y is: "<<y<< "\n";           
+            for (uint x = 0; x <grid->lineLength ; ++x)
+            {
+                
+                //if(y >= A.cols())
                 {
-                    // put that value in the cloulum vector C
-                    known(1,x)= *grid.voltage(y * lineLength + x);
-                    A(x,y) = 1;
                     //continue;
+                }
+                if ((*grid).fixedPoints.count(k * grid->numLines + x) != 0)
+                {
+                   
+                    // put that value in the cloulum vector C
+                    A(y,y) = 1;
+                   
+                    known(0,y)=(*grid).voltages[k * grid->numLines + x];
+                    std::cout<<known(0,y);
+                    y++;
+                    j++;
+                    
+                    
                         
                 }
 
                 else
                 {
-                    // put -4 in A at current place
-                    A(x,y)= -4;
-
-                    // put 1 in A one left and one right of current place
-                    A(x+1,y) = 1;
-                    A(x-1,y) = 1;
-
-                    // put 1 in A one up and one down of current place
-                    A(x,y+1) = 1;
-                    A(x,y-1) = 1;
-
-                    // put a 0 in the known  because don't know this point
-                    known(1,x) = 0;
+                   
                     
+                     A(y,y)= -4;
+                    //put 1 in A one left and one right of current place
+                     //if(y<A.cols()-1)
+                     {          
+                         A(y,y+1) = 1;                        
+                     }
+                     //if(y<A.cols()-1)
+                     {                         
+                         A(y,y-1) = 1;                         
+                     }
+                     
+                     // put 1 in A one up and one down of current place
+                     // if(y <= A.cols()-grid->numLines)
+                     {                         
+                         A(y,y+grid->numLines) = 1;                        
+                     }
+
+                     //if(!(y <= grid->numLines))
+                     {                         
+                         A(y,y-(grid->numLines)) = 1 ;                  
+                     }                   
+                     
+                     // put a 0 in the known  because don't know this point
+                     known(0,y) = 0;
+                     std::cout<<known(0,y);
+                     y++;
+                     j++;
                 }               
-                // end of x-loop                
-            }           
-            // end y-loop
+                
+                
+            }
+            k++;            
+            std::cout<<"\n";
+            if (y % 10 == 0 )
+            {
+                // std::cout<<"hi \n";
+            }
         }
-        
+
         // calculate the V bu mutilpying (invers of A) * (known)
-        V = A.inverse() * known;
-        // log V
-        for (int i = 1; i < V.cols() ; i++ )
-        {
-            *grid.voltage(i) = V(i-1)
-        }
         
+       
+        // FullPivLU<decltype(A)> LU(A);
+        if(1==1)//LU.isInvertible())
+        {
+            std::cout<<"it passed!! : "<< "\n"; 
+            V = A.inverse() * known.transpose();
+        }
+        // //TODO change to transpose
+        // else
+        // {
+        //     throw std::invalid_argument("not invertible");
+        // }
+               
+           
+        
+    //(std::exception& ex)
+        // {
+        //     std::cout << ex.what() << std::endl;
+        // }
+ 
+        
+        std::cout<<"filling in \n"; 
+            for (int i = 1; i < V.rows() ; i++ )
+            {
+        
+                //std::cout<<V(i-1)<<" \n";
+                grid->voltages[i] = V(i-1);
+            }
+        std::cout<<" done \n\n";
     }
-    
+
 }
 
 
 
-//This is just a back up incase something makes me go back to this method. #oldmethod
-                // // These if statements take care of if the ones adjecent
-                // // are known or not. if they are add them to C and 
-                // // if not then add them to A.
 
-                // // if one to the right
-                // if (fixedPoints.count(y * lineLength + x+1) == 0)
-                // {
-                //     A(x,y) += *grid.voltage(y * lineLength + x+1);
-                // }
-                
-                // else
-                // {
-                //     known(1,x)= -*grid.voltage(y * lineLength + x+1);
-                // }
-                
-                // // if one to the left
-                // if (fixedPoints.count(y * lineLength + x-1) == 0)
-                // {
-                //     A(x,y) += *grid.voltage(y * lineLength + x-1);
-                // }
-                
-                // else
-                // {
-                //     known(1,x)= -*grid.voltage(y * lineLength + x-1);
-                // } 
-                
-                // // if one down
-                // if (fixedPoints.count(y+1 * lineLength + x) == 0)
-                // {
-                //     A(x,y) += *grid.voltage(y+1 * lineLength + x);
-                // }
-                
-                // else
-                // {
-                //     known(1,x)= -*grid.voltage(y+1 * lineLength + x);
-                // }
-                
-                // // if one up
-                // if (fixedPoints.count(y-1 * lineLength + x) == 0)
-                // {
-                //     A(x,y) += *grid.voltage(y-1 * lineLength + x);
-                // }
-                
-                // else
-                // {
-                //     known(1,x)= -*grid.voltage(y-1 * lineLength +x);
-                // }
