@@ -1,0 +1,84 @@
+{
+    "MaxRelErr" : 0.0000001,
+    "ColorMap" :
+    [
+        {
+            "Type" : "HorizontalLerp",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 255,
+                "b" : 0
+            }
+        },
+
+        {
+            "Type" : "VerticalLerp",
+            "Color" :
+            {
+                "r" : 255,
+                "g" : 0,
+                "b" : 255
+            }
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 255,
+                "g" : 0,
+                "b" : 0
+            },
+            "Value" : 10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 0,
+                "b" : 0
+            },
+            "Value" : 0
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 0,
+                "g" : 0,
+                "b" : 255
+            },
+            "Value" : -10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "b" : 36,
+                "g" : 28,
+                "r" : 237
+            },
+            "Value" : 10
+        },
+
+        {
+            "Type" : "Constant",
+            "Color" :
+            {
+                "r" : 63,
+                "g" : 72,
+                "b" : 204
+            },
+            "Value" : -10
+        }
+    ],
+    "MaxIterations" : 1000000000,
+    "PixelsPerMeter" : 100,
+    "HorizontalZip" : false,
+    "VerticalZip" : false
+}
