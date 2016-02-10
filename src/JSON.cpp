@@ -241,6 +241,226 @@ ParseColorMapFromFile(const char* path)
     return ParseColorMap(cmap->value);
 }
 
+static
+Jasnah::Option<Cfg::GridConfigData>
+ParseConfig(std::vector<char>* buf, const char* path)
+{
+    Document doc;
+    if(doc.ParseInsitu(buf->data()).HasParseError())
+    {
+        LOG("JSON Error<%s:%u>: %s",
+            path,
+            (unsigned)doc.GetErrorOffset(),
+            GetParseError_En(doc.GetParseError()));
+        return Jasnah::None;
+    }
+
+    // NOTE(Chris): We require these members to be present
+    // to understand the data
+    if (!doc.HasMember("ImagePath"))
+    {
+        LOG("JSON Error: No ImagePath member.");
+        return Jasnah::None;
+    }
+    // Can only have one of the two
+    if (!doc.HasMember("ColorMap") && !doc.HasMember("ColorMapPath"))
+    {
+        LOG("JSON Error: No ColorMap/ColorMapPath member.");
+        return Jasnah::None;
+    }
+    else if (doc.HasMember("ColorMap") && doc.HasMember("ColorMapPath"))
+    {
+        LOG("JSON Error: Cannot define both ColorMap and ColorMapPath. Please use just one");
+        return Jasnah::None;
+    }
+
+    // NOTE(Chris): We will just default to 100 instead
+    // if (!doc.HasMember("PixelsPerMeter"))
+    // {
+    //     LOG("JSON Error: No PixelsPerMeter member");
+    //     return Jasnah::None;
+    // }
+
+    Cfg::GridConfigData result;
+
+    for (auto iter = doc.MemberBegin();
+         iter != doc.MemberEnd();
+         ++iter)
+    {
+        switch (StringHash(iter->name.GetString()))
+        {
+
+        case StringHash("ImagePath"):
+        {
+            if (!iter->value.IsString())
+            {
+                LOG("ImagePath must be a path (string)");
+                return Jasnah::None;
+            }
+            result.imagePath = iter->value.GetString();
+        } break;
+
+        case StringHash("ScaleFactor"):
+        {
+            if (!iter->value.IsUint())
+            {
+                LOG("ScaleFactor msut be an unsigned integer");
+                return Jasnah::None;
+            }
+            result.scaleFactor = iter->value.GetUint();
+        } break;
+
+        case StringHash("ColorMap"):
+        {
+            if (!iter->value.IsArray())
+            {
+                LOG("ColorMap must be an array of Constraint obejcts "
+                    "(containing a type string and a value for Constant types)");
+                return Jasnah::None;
+            }
+
+            const auto constraints = ParseColorMap(iter->value);
+            if (!constraints)
+            {
+                LOG("ColorMap array invalid");
+                return Jasnah::None;
+            }
+            result.constraints = *constraints;
+
+        } break;
+
+        case StringHash("ColorMapPath"):
+        {
+            if (!iter->value.IsString())
+            {
+                LOG("ColorMapPath must be a path (string)");
+                return Jasnah::None;
+            }
+            const auto constraints = ParseColorMapFromFile(iter->value.GetString());
+            if (!constraints)
+            {
+                LOG("ColorMap array from loaded file invalid");
+                return Jasnah::None;
+            }
+            result.constraints = *constraints;
+
+        } break;
+
+        case StringHash("PixelsPerMeter"):
+        {
+            if (!iter->value.IsNumber())
+            {
+                LOG("PixelsPerMeter member must be numeric");
+                return Jasnah::None;
+            }
+            result.pixelsPerMeter = iter->value.GetDouble();
+        } break;
+
+        case StringHash("MaxIterations"):
+        {
+            if (!iter->value.IsUint64())
+            {
+                LOG("MaxIterations member must be an unsigned integer");
+                return Jasnah::None;
+            }
+            result.maxIter = iter->value.GetUint64();
+        } break;
+
+        case StringHash("MaxRelErr"):
+        {
+            if (!iter->value.IsNumber())
+            {
+                LOG("RelativeZeroTolerance member must be a positive double");
+                return Jasnah::None;
+            }
+            result.zeroTol = std::abs(iter->value.GetDouble());
+        } break;
+
+        case StringHash("HorizontalZip"):
+        {
+            if (!iter->value.IsBool())
+            {
+                LOG("HorizontaZip member must be a bool type");
+                return Jasnah::None;
+            }
+            result.horizZip = iter->value.GetBool();
+        } break;
+
+        case StringHash("VerticalZip"):
+        {
+            if (!iter->value.IsBool())
+            {
+                LOG("VerticalZip member must be a bool type");
+                return Jasnah::None;
+            }
+            result.verticZip = iter->value.GetBool();
+        } break;
+
+        case StringHash("AnalyticInnerRadius"):
+        {
+            if (!iter->value.IsNumber())
+            {
+                LOG("AnalyticInnerRadius member must be a number");
+                return Jasnah::None;
+            }
+            result.analyticInner = iter->value.GetDouble();
+        } break;
+
+        case StringHash("AnalyticOuterRadius"):
+        {
+            if (!iter->value.IsNumber())
+            {
+                LOG("AnalyticOuterRadius member must be a number");
+                return Jasnah::None;
+            }
+            result.analyticOuter = iter->value.GetDouble();
+        } break;
+
+        case StringHash("CalculationMode"):
+        {
+            if (!iter->value.IsString())
+            {
+                LOG("CalculationMode must be a string");
+                return Jasnah::None;
+            }
+
+            switch (StringHash(iter->value.GetString()))
+            {
+            case StringHash("FiniteDiff"):
+            {
+                result.mode = Cfg::CalculationMode::FiniteDiff;
+            } break;
+
+            case StringHash("MatrixInversion"):
+            {
+                result.mode = Cfg::CalculationMode::MatrixInversion;
+            } break;
+
+            case StringHash("SOR"):
+            {
+                result.mode = Cfg::CalculationMode::SOR;
+            } break;
+
+            case StringHash("AMR"):
+            {
+                result.mode = Cfg::CalculationMode::AMR;
+            } break;
+
+            default:
+            {
+                LOG("Unknown CalculationMode, using default");
+            }
+            }
+        } break;
+
+        default:
+            LOG("Unknown key \"%s\", ignoring", iter->name.GetString());
+        }
+    }
+
+    return result;
+}
+
 namespace Cfg
 {
     // TODO(Chris): Add a mode switch to vary the reqd args
@@ -251,222 +471,15 @@ namespace Cfg
         if (!in)
             return Jasnah::None;
 
-        auto buf = *in;
-        Document doc;
+        return ParseConfig(&*in, path);
+    }
 
-        if(doc.ParseInsitu(buf.data()).HasParseError())
-        {
-            LOG("JSON Error<%s:%u>: %s",
-                path,
-                (unsigned)doc.GetErrorOffset(),
-                GetParseError_En(doc.GetParseError()));
-            return Jasnah::None;
-        }
-
-        // NOTE(Chris): We require these members to be present
-        // to understand the data
-        if (!doc.HasMember("ImagePath"))
-        {
-            LOG("JSON Error: No ImagePath member.");
-            return Jasnah::None;
-        }
-        // Can only have one of the two
-        if (!doc.HasMember("ColorMap") && !doc.HasMember("ColorMapPath"))
-        {
-            LOG("JSON Error: No ColorMap/ColorMapPath member.");
-            return Jasnah::None;
-        }
-        else if (doc.HasMember("ColorMap") && doc.HasMember("ColorMapPath"))
-        {
-            LOG("JSON Error: Cannot define both ColorMap and ColorMapPath. Please use just one");
-            return Jasnah::None;
-        }
-
-        // NOTE(Chris): We will just default to 100 instead
-        // if (!doc.HasMember("PixelsPerMeter"))
-        // {
-        //     LOG("JSON Error: No PixelsPerMeter member");
-        //     return Jasnah::None;
-        // }
-
-        GridConfigData result;
-
-        for (auto iter = doc.MemberBegin();
-             iter != doc.MemberEnd();
-            ++iter)
-        {
-            switch (StringHash(iter->name.GetString()))
-            {
-
-            case StringHash("ImagePath"):
-            {
-                if (!iter->value.IsString())
-                {
-                    LOG("ImagePath must be a path (string)");
-                    return Jasnah::None;
-                }
-                result.imagePath = iter->value.GetString();
-            } break;
-
-            case StringHash("ScaleFactor"):
-            {
-                if (!iter->value.IsUint())
-                {
-                    LOG("ScaleFactor msut be an unsigned integer");
-                    return Jasnah::None;
-                }
-                result.scaleFactor = iter->value.GetUint();
-            } break;
-
-            case StringHash("ColorMap"):
-            {
-                if (!iter->value.IsArray())
-                {
-                    LOG("ColorMap must be an array of Constraint obejcts "
-                        "(containing a type string and a value for Constant types)");
-                    return Jasnah::None;
-                }
-
-                const auto constraints = ParseColorMap(iter->value);
-                if (!constraints)
-                {
-                    LOG("ColorMap array invalid");
-                    return Jasnah::None;
-                }
-                result.constraints = *constraints;
-
-            } break;
-
-            case StringHash("ColorMapPath"):
-            {
-                if (!iter->value.IsString())
-                {
-                    LOG("ColorMapPath must be a path (string)");
-                    return Jasnah::None;
-                }
-                const auto constraints = ParseColorMapFromFile(iter->value.GetString());
-                if (!constraints)
-                {
-                    LOG("ColorMap array from loaded file invalid");
-                    return Jasnah::None;
-                }
-                result.constraints = *constraints;
-
-            } break;
-
-            case StringHash("PixelsPerMeter"):
-            {
-                if (!iter->value.IsNumber())
-                {
-                    LOG("PixelsPerMeter member must be numeric");
-                    return Jasnah::None;
-                }
-                result.pixelsPerMeter = iter->value.GetDouble();
-            } break;
-
-            case StringHash("MaxIterations"):
-            {
-                if (!iter->value.IsUint64())
-                {
-                    LOG("MaxIterations member must be an unsigned integer");
-                    return Jasnah::None;
-                }
-                result.maxIter = iter->value.GetUint64();
-            } break;
-
-            case StringHash("MaxRelErr"):
-            {
-                if (!iter->value.IsNumber())
-                {
-                    LOG("RelativeZeroTolerance member must be a positive double");
-                    return Jasnah::None;
-                }
-                result.zeroTol = std::abs(iter->value.GetDouble());
-            } break;
-
-            case StringHash("HorizontalZip"):
-            {
-                if (!iter->value.IsBool())
-                {
-                    LOG("HorizontaZip member must be a bool type");
-                    return Jasnah::None;
-                }
-                result.horizZip = iter->value.GetBool();
-            } break;
-
-            case StringHash("VerticalZip"):
-            {
-                if (!iter->value.IsBool())
-                {
-                    LOG("VerticalZip member must be a bool type");
-                    return Jasnah::None;
-                }
-                result.verticZip = iter->value.GetBool();
-            } break;
-
-            case StringHash("AnalyticInnerRadius"):
-            {
-                if (!iter->value.IsNumber())
-                {
-                    LOG("AnalyticInnerRadius member must be a number");
-                    return Jasnah::None;
-                }
-                result.analyticInner = iter->value.GetDouble();
-            } break;
-
-            case StringHash("AnalyticOuterRadius"):
-            {
-                if (!iter->value.IsNumber())
-                {
-                    LOG("AnalyticOuterRadius member must be a number");
-                    return Jasnah::None;
-                }
-                result.analyticOuter = iter->value.GetDouble();
-            } break;
-
-            case StringHash("CalculationMode"):
-            {
-                if (!iter->value.IsString())
-                {
-                    LOG("CalculationMode must be a string");
-                    return Jasnah::None;
-                }
-
-                switch (StringHash(iter->value.GetString()))
-                {
-                case StringHash("FiniteDiff"):
-                {
-                    result.mode = CalculationMode::FiniteDiff;
-                } break;
-
-                case StringHash("MatrixInversion"):
-                {
-                    result.mode = CalculationMode::MatrixInversion;
-                } break;
-
-                case StringHash("SOR"):
-                {
-                    result.mode = CalculationMode::SOR;
-                } break;
-
-                case StringHash("AMR"):
-                {
-                    result.mode = CalculationMode::AMR;
-                } break;
-
-                default:
-                {
-                    LOG("Unknown CalculationMode, using default");
-                }
-                }
-            } break;
-
-            default:
-                LOG("Unknown key \"%s\", ignoring", iter->name.GetString());
-            }
-        }
-
-        return result;
+    Jasnah::Option<GridConfigData>
+    LoadGridConfigString(const std::string& data)
+    {
+        std::vector<char> buf(data.begin(), data.end());
+        buf.push_back('\0');
+        return ParseConfig(&buf, "stdin");
     }
 
     bool

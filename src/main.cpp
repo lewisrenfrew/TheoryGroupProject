@@ -13,6 +13,7 @@
 #include "Plot.hpp"
 #include "JSON.hpp"
 #include <tclap/CmdLine.h>
+#include <iostream>
 
 // NOTE(Chris): It's going to be a bit of work to get tests running
 // again now
@@ -38,7 +39,8 @@ enum class OperationMode
 
 struct CommandLineFlags
 {
-    bool lastMatrix;
+    // bool lastMatrix;
+    bool jsonStdin;
     OperationMode mode;
     std::vector<std::string> inputPaths;
 };
@@ -57,13 +59,16 @@ ParseArguments(const int argc, const char* argv[])
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription,add to an object(cmd line), default state.
-        SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used", false);
+        // We're not using this for now
+        // SwitchArg lastMatrix("m", "lastMatrix", "Runs with the last matrix used", false);
+        SwitchArg jsonStdin("j", "jsonStdin",
+                            "Read json from stdin, complete objects separated by \"EOF\\n\"",
+                            cmd, false);
 
 
         // Aguments are in order: '-' flag, "--" flag,
         // discription, default state, default string value , path, add to an object(cmd line).
-        ValueArg<std::string> infoFile("i" , "infofile","Holds the information about each matrix", false, "",
-                                              "path");
+        SwitchArg infoFile("i" , "infofile","JSON file providing simulation info", false);
 
         SwitchArg cmp0("0", "compareprob0", "Compares the input file against the analytical solution to problem 0", false);
         SwitchArg cmp1("1", "compareprob1", "Compares the input file against the analytical solution to problem 1", false);
@@ -82,34 +87,49 @@ ParseArguments(const int argc, const char* argv[])
 
         CommandLineFlags ret;
 
-        ret.lastMatrix = lastMatrix.getValue();
+        // ret.lastMatrix = lastMatrix.getValue();
 
         if (cmp0.getValue())
         {
             ret.mode = OperationMode::CompareProblem0;
-            ret.inputPaths = cmpNames.getValue();
         }
         else if (cmp1.getValue())
         {
             ret.mode = OperationMode::CompareProblem1;
-            ret.inputPaths = cmpNames.getValue();
         }
         else if (cmp2.getValue())
         {
             ret.mode = OperationMode::CompareTwo;
-            ret.inputPaths = cmpNames.getValue();
         }
         else if (preprocess1.getValue())
         {
             ret.mode = OperationMode::Preprocess;
-            ret.inputPaths = cmpNames.getValue();
         }
         else
         {
-            // NOTE(Chris): Maybe move to same behaviour as others?
-            // SwitchArg + Unlabeled
             ret.mode = OperationMode::SingleSimulation;
-            ret.inputPaths = {infoFile.getValue()};
+        }
+        ret.inputPaths = cmpNames.getValue();
+        ret.jsonStdin = jsonStdin.getValue();
+
+        if (jsonStdin.getValue())
+        {
+            ret.inputPaths.resize(0);
+            std::string json;
+            std::string in;
+            while (std::cin >> in)
+            {
+                if (in == "EOF")
+                {
+                    ret.inputPaths.push_back(json);
+                    json = "";
+                }
+                else
+                {
+                    json += in;
+                }
+            }
+            ret.inputPaths.push_back(json);
         }
 
         return ret;
@@ -158,7 +178,7 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
 
 static
 int
-CompareProblem0(const std::vector<std::string>& paths)
+CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
 {
     if (paths.size() != 1)
     {
@@ -166,7 +186,17 @@ CompareProblem0(const std::vector<std::string>& paths)
         return EXIT_FAILURE;
     }
 
-    auto cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
+    Jasnah::Option<Cfg::GridConfigData> cfg;
+
+    if (pathsAreJson)
+    {
+        cfg = Cfg::LoadGridConfigString(paths.front());
+    }
+    else
+    {
+        cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
+    }
+
     if (!cfg)
     {
         LOG("Cannot understand config file, exiting");
@@ -221,7 +251,7 @@ CompareProblem0(const std::vector<std::string>& paths)
 
 static
 int
-CompareProblem1(const std::vector<std::string>& paths)
+CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
 {
     if (paths.size() != 1)
     {
@@ -229,7 +259,17 @@ CompareProblem1(const std::vector<std::string>& paths)
         return EXIT_FAILURE;
     }
 
-    auto cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
+    Jasnah::Option<Cfg::GridConfigData> cfg;
+
+    if (pathsAreJson)
+    {
+        cfg = Cfg::LoadGridConfigString(paths.front());
+    }
+    else
+    {
+        cfg = Cfg::LoadGridConfigFile(paths.front().c_str());
+    }
+
     if (!cfg)
     {
         LOG("Cannot understand config file, exiting");
@@ -285,7 +325,7 @@ CompareProblem1(const std::vector<std::string>& paths)
 
 static
 int
-CompareTwo(const std::vector<std::string>& paths)
+CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
 {
     if (paths.size() != 2)
     {
@@ -300,9 +340,19 @@ CompareTwo(const std::vector<std::string>& paths)
 
 static
 int
-SingleSimulation(const std::string& path)
+SingleSimulation(const bool pathIsJson, const std::string& path)
 {
-    auto cfg = Cfg::LoadGridConfigFile(path.c_str());
+    Jasnah::Option<Cfg::GridConfigData> cfg;
+
+    if (pathIsJson)
+    {
+        cfg = Cfg::LoadGridConfigString(path);
+    }
+    else
+    {
+        cfg = Cfg::LoadGridConfigFile(path.c_str());
+    }
+
     if (!cfg)
     {
         LOG("Cannot understand config file, exiting");
@@ -381,22 +431,22 @@ int main(int argc, const char* argv[])
     {
     case OperationMode::CompareProblem0:
     {
-        result = CompareProblem0(args.inputPaths);
+        result = CompareProblem0(args.jsonStdin, args.inputPaths);
     } break;
 
     case OperationMode::CompareProblem1:
     {
-        result = CompareProblem1(args.inputPaths);
+        result = CompareProblem1(args.jsonStdin, args.inputPaths);
     } break;
 
     case OperationMode::CompareTwo:
     {
-        result = CompareTwo(args.inputPaths);
+        result = CompareTwo(args.jsonStdin, args.inputPaths);
     } break;
 
     case OperationMode::SingleSimulation:
     {
-        result = SingleSimulation(args.inputPaths.front());
+        result = SingleSimulation(args.jsonStdin, args.inputPaths.front());
     } break;
 
     case OperationMode::Preprocess:

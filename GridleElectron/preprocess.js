@@ -2,7 +2,11 @@ const remote = require('remote');
 const BrowserWindow = remote.BrowserWindow;
 const dialog = remote.require('dialog');
 const execFile = require('child_process').execFile;
-const $ = require('jQuery');
+// preload.js
+// require('module').globalPaths.push(__dirname + '/node_modules');
+const $ = require('./node_modules/jquery/dist/jquery.min.js');
+const fs = require('fs');
+const EOL = require('os').EOL;
 // const $.serializeJSON = require('jQuery.serializeJSON');
 
 var OperatingMode = Object.freeze({SingleSimulation : {},
@@ -148,6 +152,7 @@ function colorHTMLObject(col, i) {
     var index = 0;
     var cmap = state.defaults.ColorMap;
     for (var j = 0; j < cmap.length; ++j) {
+        // Order matters here so be careful to match the default.json file when using this
         if (JSON.stringify(cmap[j].Color) === JSON.stringify(col)) {
             inMap = true;
             index = j;
@@ -281,10 +286,26 @@ function jsonDefaultOr(json, field, value, func) {
     return json;
 }
 
+function selectToGridleType(sel) {
+    switch (sel) {
+    case 'const': {
+        return 'Constant';
+    } break;
+
+    case 'hlerp': {
+        return 'HorizontalLerp';
+    } break;
+
+    case 'vlerp': {
+        return 'VerticalLerp';
+    } break;
+
+    }
+}
+
 function runForm() {
     var form = $('#mainForm').serializeArray();
     var data = JSON.stringify(form);
-    console.log(form);
     // console.log(data);
     var json = state.jsonIn;
 
@@ -355,8 +376,8 @@ function runForm() {
                 if (cmap[num] == null) {
                     cmap[num] = {};
                 }
-                cmap[num].Type = form[i].value;
-                cmap[num].Color = state.defaults.ColorMap[num].Color;
+                cmap[num].Type = selectToGridleType(form[i].value);
+                cmap[num].Color = json.ColorMap[num];
 
             } continue;
 
@@ -369,5 +390,14 @@ function runForm() {
 
     json.ColorMap = cmap;
     console.log(JSON.stringify(json));
+    var outputFilename = '/tmp/my.json';
+
+    fs.writeFile(outputFilename, JSON.stringify(json, null, 4) + '\0', function(err) {
+        if(err) {
+            console.log(err);
+        } else {
+            console.log("JSON saved to " + outputFilename);
+        }
+    });
 
 }

@@ -50,6 +50,10 @@ namespace Cfg
     Jasnah::Option<GridConfigData>
     LoadGridConfigFile(const char* path);
 
+    /// Same as above but parses a string
+    Jasnah::Option<GridConfigData>
+    LoadGridConfigString(const std::string& data);
+
     bool
     WriteJSONPreprocFile(const JSONPreprocConfigVars& vars);
 }
