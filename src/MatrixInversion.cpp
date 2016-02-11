@@ -47,18 +47,22 @@ namespace MatrixInversion
             for (uint x = 0; x <grid->lineLength ; ++x)
             {
                 
-                //if(y >= A.cols())
+                if(y >= A.cols())
                 {
-                    //continue;
+                    continue;
                 }
                 if ((*grid).fixedPoints.count(k * grid->numLines + x) != 0)
                 {
+                    
                    
-                    // put that value in the cloulum vector C
+                    //put that value in the cloulum vector C
                     A(y,y) = 1;
                    
                     known(0,y)=(*grid).voltages[k * grid->numLines + x];
                     std::cout<<known(0,y);
+                    //std::cout<<A(y,y);
+                    //std::cin>>j;
+                    //std::cout<<y<<A.row(y)<<"\n"; 
                     y++;
                     j++;
                     
@@ -72,43 +76,53 @@ namespace MatrixInversion
                     
                      A(y,y)= -4;
                     //put 1 in A one left and one right of current place
-                     //if(y<A.cols()-1)
-                     {          
-                         A(y,y+1) = 1;                        
+                     if(y<A.cols()-1)
+                     {
+                         
+                         A(y,y+1) = 1;
+                         
                      }
                      //if(y<A.cols()-1)
-                     {                         
-                         A(y,y-1) = 1;                         
+                     {
+                                                  
+                         A(y,y-1) = 1;
+                         
                      }
                      
                      // put 1 in A one up and one down of current place
-                     // if(y <= A.cols()-grid->numLines)
-                     {                         
-                         A(y,y+grid->numLines) = 1;                        
+                     if( y+grid->numLines<A.cols())
+                     {
+                         
+                         A(y,y+grid->numLines) = 1;
+                                               
                      }
 
-                     //if(!(y <= grid->numLines))
+                     if(!(y <= grid->numLines))
                      {                         
                          A(y,y-(grid->numLines)) = 1 ;                  
                      }                   
                      
                      // put a 0 in the known  because don't know this point
                      known(0,y) = 0;
+                     //std::cout<<y<<A.row(y)<<"\n"; 
                      std::cout<<known(0,y);
                      y++;
                      j++;
                 }               
                 
-                
+               
             }
-            k++;            
+            
+            k++;
+            
             std::cout<<"\n";
-            if (y % 10 == 0 )
+            if (y != 0 )
             {
-                // std::cout<<"hi \n";
+                // std::cout<<"y: "<<y <<" \n";
             }
         }
-
+        
+        //std::cout<<A<<"\n";
         // calculate the V bu mutilpying (invers of A) * (known)
         
        
@@ -133,12 +147,12 @@ namespace MatrixInversion
  
         
         std::cout<<"filling in \n"; 
-            for (int i = 1; i < V.rows() ; i++ )
-            {
+        for (int i = 1; i < V.rows() ; i++ )
+        {
         
-                //std::cout<<V(i-1)<<" \n";
-                grid->voltages[i] = V(i-1);
-            }
+            //std::cout<<V(i-1)<<" \n";
+            grid->voltages[i] = V(i);
+        }
         std::cout<<" done \n\n";
     }
 
