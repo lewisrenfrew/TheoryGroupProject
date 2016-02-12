@@ -5,7 +5,7 @@ const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
 
 var mainWindow = null;
-global.state = {inner: null};
+global.state = {inner: null, graphs: null};
 
 app.on('window-all-closed', function()
        {

@@ -411,9 +411,9 @@ PlotSingleSim(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log)
     PlotVectorField(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
 
     // Serialize output files if reqd
-    Log::GetAnalytics().ReportGraphOutput(gridPlot, "Plotted1");
-    Log::GetAnalytics().ReportGraphOutput(contourPlot, "Plotted2");
-    Log::GetAnalytics().ReportGraphOutput(vectorPlot, "Plotted3");
+    Log::GetAnalytics().ReportGraphOutput(gridPlot, "Voltage Plot");
+    Log::GetAnalytics().ReportGraphOutput(contourPlot, "Voltage Contour Plot");
+    Log::GetAnalytics().ReportGraphOutput(vectorPlot, "E-field Plot");
 
     return true;
 }
@@ -440,6 +440,14 @@ PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths lo
     // PlotVectorField(*grids.vector2, vectorPlot, "Electric Field (V/m)");
     PlotColorMap(*grids.difference, differencePlot, "Difference (V)");
 
+    Log::GetAnalytics().ReportGraphOutput(gridPlot, "Voltage Plot");
+    Log::GetAnalytics().ReportGraphOutput(contourPlot, "Voltage Contour Plot");
+    Log::GetAnalytics().ReportGraphOutput(vectorPlot, "E-field Plot");
+
+    Log::GetAnalytics().ReportGraphOutput(gridAnalyticPlot, "Voltage Plot (Analytic)");
+    Log::GetAnalytics().ReportGraphOutput(contourAnalyticPlot, "Voltage Contour Plot (Analytic)");
+
+    Log::GetAnalytics().ReportGraphOutput(differencePlot, "Voltage Difference Between Solutions");
 
     // Serialize output files if reqd
 
@@ -469,6 +477,15 @@ PlotCompareTwo(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log
     PlotColorMap(*grids.difference, differencePlot, "Difference (V)");
 
     // Serialize output files if reqd
+    Log::GetAnalytics().ReportGraphOutput(gridOnePlot, "Voltage One Plot");
+    Log::GetAnalytics().ReportGraphOutput(contourOnePlot, "Voltage One Contour Plot");
+    Log::GetAnalytics().ReportGraphOutput(vectorOnePlot, "E-field One Plot");
+
+    Log::GetAnalytics().ReportGraphOutput(gridTwoPlot, "Voltage Two Plot");
+    Log::GetAnalytics().ReportGraphOutput(contourTwoPlot, "Voltage Two Contour Plot");
+    Log::GetAnalytics().ReportGraphOutput(vectorTwoPlot, "E-field Two Plot");
+
+    Log::GetAnalytics().ReportGraphOutput(differencePlot, "Voltage Difference Between Solutions");
 
     return true;
 }

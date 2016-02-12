@@ -357,11 +357,12 @@ function runForm() {
 
 // To Marc, with <3
 function killChild() {
-    state.child.kill();
+    if (state.child !== null)
+        state.child.kill();
 }
 
 function viewOutput() {
-
+    document.getElementById('viewSim').innerHTML = $('#viewSimButtonTemplate').html();
 }
 
 function runSimulation(modeString, json) {
@@ -369,35 +370,43 @@ function runSimulation(modeString, json) {
 
     if (state.child == null)
     {
+        state.graphs = [];
 
         const child = execFile('bin/gridle', ['-j', '-g', modeString], { cwd: ".."},
                                (error, stdout, stderr) => {
-                                   if (error !== null) {
-                                       alert(stderr);
-                                   } else {
-                                       viewOutput();
-                                   }
                                });
 
         child.stdout.pipe(ndjson.parse())
             .on('data', (data) => {
-                var out = document.getElementById('gridleOutput');
-                var currentText = out.innerHTML;
-                var str = $('<div>').text(data.message).html();
-                currentText += EOL + str;
-                currentText = currentText.match(/\s*([\s\S]*)/)[1];
-                out.innerHTML = currentText;
+                switch (data.type) {
+                case 'timing':
+                    // fall through
+                case 'message': {
+                    var out = document.getElementById('gridleOutput');
+                    var currentText = out.innerHTML;
+                    var str = $('<div>').text(data.message).html();
+                    currentText += EOL + str;
+                    currentText = currentText.match(/\s*([\s\S]*)/)[1];
+                    out.innerHTML = currentText;
+                } break;
+                case 'graph': {
+                    state.graphs.push(data);
+                }
+                }
             })
 
         state.child = child;
         child.stdin.write(json);
         child.stdin.end();
+
         child.on('close', (code) => {
             state.child = null;
             console.log(`Done with ${code}`);
             if (code == 0) {
+                remote.getGlobal('state').graphs = state.graphs;
                 viewOutput();
             }
+
         })
     } else {
         // $('#gridleOutput').text('Process already running: please kill current simulation first');

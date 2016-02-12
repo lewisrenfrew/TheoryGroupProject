@@ -67,11 +67,17 @@
     </div>
   </script>
 
+  <script id="viewSimButtonTemplate" type="x-tmpl-mustache">
+    <a class="button noselect" href="./simulation.html">View Simulation</a>
+  </script>
+
   <script id="simulationDataTemplate" type="x-impl-mustache">
       <h6 class="sec-title">Simulation</h6>
       <div class="row">
-        <div class="3 columns">
+        <div class="three columns">
           <input type="button" value="Kill Simulation" onclick="killChild();">
+        </div>
+        <div class="three columns" align="right" id="viewSim">
         </div>
       </div>
       <div class="row">

@@ -202,6 +202,22 @@ public:
     void
     ReportGraphOutput(const char* fileName, const char* message)
     {
+        switch (mode_)
+        {
+        case Mode::None:
+            break;
+
+        case Mode::StdOut:
+        {
+            LOG("Plotted %s, %s", fileName, message);
+
+        } break;
+
+        case Mode::JSONStdOut:
+        {
+            stream_->EnqueueGraphOutput(fileName, message);
+        }
+        }
     }
 
     void SetMode(Mode mode, JsonOutputStream* str = nullptr)
