@@ -10,18 +10,19 @@
 #include "Jasnah.hpp"
 #include "Utility.hpp"
 #include "Grid.hpp"
+#include "Utility.hpp"
 
 using Jasnah::Option;
 using Jasnah::None;
 
 typedef V2<uint> V2u;
 
-template <typename T, typename... Args>
-std::unique_ptr<T>
-make_unique(Args&&... args)
-{
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
+// template <typename T, typename... Args>
+// std::unique_ptr<T>
+// make_unique(Args&&... args)
+// {
+//     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+// }
 
 struct BB
 {

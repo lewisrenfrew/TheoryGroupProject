@@ -12,6 +12,12 @@
 #include <atomic>
 #include <algorithm>
 
+// #include <xmmintrin.h>
+// // To enable
+// _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
+// // to disable - will enable if disabled
+// _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() ^ _MM_MASK_INVALID);
+
 namespace FDM
 {
     /// Max number of threads to be used by OpenMP, empirical testing

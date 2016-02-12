@@ -107,6 +107,15 @@ namespace Lethani {
             streamLock_ = lock;
     }
 
+	void Logfile::ResetToStdOut()
+	{
+		{
+			std::lock_guard<std::mutex> lock(*streamLock_);
+			consoleStream_ = nullptr;
+		}
+		streamLock_ = nullptr;
+	}
+
 	void Logfile::DebugPrintf(const char* _format, ...)
 	{
 		va_list argList;

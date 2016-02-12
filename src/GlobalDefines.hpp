@@ -11,10 +11,30 @@
 #include "Types.h"
 #include "Debug/Debug.hpp"
 
+class JsonOutputStream;
+class AnalyticsDaemon;
+
 namespace Log
 {
     extern Lethani::Logfile log;
+    JsonOutputStream& GetJsonOutStream();
+    AnalyticsDaemon& GetAnalytics();
 }
+
+struct TimedFunction
+{
+public:
+    TimedFunction(const char* fnName);
+
+    ~TimedFunction();
+private:
+    const char* fn_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> end_;
+};
+
+#define TIME_FUNCTION_IMPL(s, l) TimedFunction t_##l(s)
+#define TIME_FUNCTION() TIME_FUNCTION_IMPL(__FUNCTION__, __LINE__)
 
 namespace Version
 {
@@ -35,4 +55,5 @@ namespace Color
     constexpr const u32 Black = 0xFF000000;
 }
 
+#include "OutputStream.hpp"
 #endif

@@ -10,6 +10,7 @@
 #define UTILITY_H
 #include "GlobalDefines.hpp"
 #include <vector>
+#include <memory>
 
 #ifdef GOMP
 #include <omp.h>
@@ -36,6 +37,13 @@ T Square(T val) { return val * val; }
 
 template <typename T>
 using RemRefT = typename std::remove_reference<T>::type;
+
+template <typename T, typename... Args>
+inline std::unique_ptr<T>
+make_unique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 /// 2D vector type for the gradient stuff
 template <typename T>

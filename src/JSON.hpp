@@ -24,6 +24,15 @@ namespace Cfg
         AMR
     };
 
+    enum class OperationMode
+    {
+        SingleSimulation,
+        CompareProblem0,
+        CompareProblem1,
+        CompareTwo,
+        Preprocess
+    };
+
     struct GridConfigData
     {
         std::string imagePath;

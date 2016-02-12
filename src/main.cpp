@@ -12,6 +12,8 @@
 #include "GradientGrid.hpp"
 #include "Plot.hpp"
 #include "JSON.hpp"
+#include "OutputStream.hpp"
+#include "Utility.hpp"
 #include <tclap/CmdLine.h>
 #include <iostream>
 
@@ -28,20 +30,27 @@ namespace Log
 }
 #endif
 
-enum class OperationMode
+
+TimedFunction::TimedFunction(const char* fnName) :  fn_(fnName)
 {
-    SingleSimulation,
-    CompareProblem0,
-    CompareProblem1,
-    CompareTwo,
-    Preprocess
-};
+    start_  = std::chrono::high_resolution_clock::now();
+}
+
+TimedFunction::~TimedFunction()
+{
+    end_  = std::chrono::high_resolution_clock::now();
+    auto diff = end_ - start_;
+    Log::GetAnalytics().
+        ReportTimedFunction(fn_,
+                            std::chrono::duration_cast<std::chrono::milliseconds>(diff));
+}
 
 struct CommandLineFlags
 {
     // bool lastMatrix;
     bool jsonStdin;
-    OperationMode mode;
+    bool guiMode;
+    Cfg::OperationMode mode;
     std::vector<std::string> inputPaths;
 };
 
@@ -64,6 +73,7 @@ ParseArguments(const int argc, const char* argv[])
         SwitchArg jsonStdin("j", "jsonStdin",
                             "Read json from stdin, complete objects separated by \"EOF\\n\"",
                             cmd, false);
+        SwitchArg gui("g", "gui", "Run in gui mode (output json on stdout)", cmd, false);
 
 
         // Aguments are in order: '-' flag, "--" flag,
@@ -91,23 +101,23 @@ ParseArguments(const int argc, const char* argv[])
 
         if (cmp0.getValue())
         {
-            ret.mode = OperationMode::CompareProblem0;
+            ret.mode = Cfg::OperationMode::CompareProblem0;
         }
         else if (cmp1.getValue())
         {
-            ret.mode = OperationMode::CompareProblem1;
+            ret.mode = Cfg::OperationMode::CompareProblem1;
         }
         else if (cmp2.getValue())
         {
-            ret.mode = OperationMode::CompareTwo;
+            ret.mode = Cfg::OperationMode::CompareTwo;
         }
         else if (preprocess1.getValue())
         {
-            ret.mode = OperationMode::Preprocess;
+            ret.mode = Cfg::OperationMode::Preprocess;
         }
         else
         {
-            ret.mode = OperationMode::SingleSimulation;
+            ret.mode = Cfg::OperationMode::SingleSimulation;
         }
         ret.inputPaths = cmpNames.getValue();
         ret.jsonStdin = jsonStdin.getValue();
@@ -132,6 +142,8 @@ ParseArguments(const int argc, const char* argv[])
             ret.inputPaths.push_back(json);
         }
 
+        ret.guiMode = gui.getValue();
+
         return ret;
     }
     catch(TCLAP::ArgException& ex)
@@ -145,6 +157,7 @@ static
 void
 DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTol, f64 maxIter)
 {
+
     if (!mode)
     {
         LOG("Using FDM");
@@ -232,16 +245,24 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
 
     using namespace Plot;
 
-    WriteGridForGnuplot(grid);
-    WriteGnuplotColormapFile(grid);
-    WriteGnuplotContourFile(grid);
+    PlottableGrids grids;
+    grids.singleSimGrid = grid;
+    grids.grid2 = analytic;
+    grids.singleSimVector = gradGrid;
+    grids.difference = diff;
 
-    WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
-    WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem0);
 
-    WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
-    WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
-    WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
+    // WriteGridForGnuplot(grid);
+    // WriteGnuplotColormapFile(grid);
+    // WriteGnuplotContourFile(grid);
+
+    // WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
+    // WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+
+    // WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
+    // WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
+    // WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
 
     // WriteGridForGnuplot(analytic);
     // WriteGnuplotColormapFile(analytic);
@@ -309,16 +330,24 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
 
     using namespace Plot;
 
-    WriteGridForGnuplot(grid);
-    WriteGnuplotColormapFile(grid);
-    WriteGnuplotContourFile(grid);
+    PlottableGrids grids;
+    grids.singleSimGrid = grid;
+    grids.grid2 = analytic;
+    grids.singleSimVector = gradGrid;
+    grids.difference = diff;
 
-    WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
-    WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1);
 
-    WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
-    WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
-    WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
+    // WriteGridForGnuplot(grid);
+    // WriteGnuplotColormapFile(grid);
+    // WriteGnuplotContourFile(grid);
+
+    // WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
+    // WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
+
+    // WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
+    // WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
+    // WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
 
     return EXIT_SUCCESS;
 }
@@ -370,11 +399,16 @@ SingleSimulation(const bool pathIsJson, const std::string& path)
     gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
 
     using namespace Plot;
+    PlottableGrids grids;
+    grids.singleSimGrid = grid;
+    grids.singleSimVector = gradGrid;
 
-    WriteGridForGnuplot(grid);
-    WriteGnuplotColormapFile(grid);
-    WriteGnuplotContourFile(grid);
-    WriteGradientFiles(gradGrid);
+    WritePlotFiles(grids, Cfg::OperationMode::SingleSimulation);
+
+    // WriteGridForGnuplot(grid);
+    // WriteGnuplotColormapFile(grid);
+    // WriteGnuplotContourFile(grid);
+    // WriteGradientFiles(gradGrid);
 
     return EXIT_SUCCESS;
 }
@@ -405,11 +439,6 @@ Preprocess(const std::string& path)
     if (iter != tx.end())
         tx.erase(iter);
 
-    // for (const auto& val : tx)
-    // {
-    //     LOG("%u, %u, %u", (unsigned)val.r, (unsigned)val.g, (unsigned)val.b);
-    // }
-
     Cfg::JSONPreprocConfigVars json;
     json.imgPath = path;
     json.colorMap = tx;
@@ -421,35 +450,63 @@ Preprocess(const std::string& path)
     return EXIT_SUCCESS;
 }
 
+// NOTE(Chris): Meyers' C++11 singleton pattern
+namespace Log
+{
+    JsonOutputStream&
+    GetJsonOutStream()
+    {
+        static JsonOutputStream s(&Log::log);
+        return s;
+    }
+
+    AnalyticsDaemon&
+    GetAnalytics()
+    {
+        static AnalyticsDaemon a;
+        return a;
+    }
+}
+
 #ifndef CATCH_CONFIG_MAIN
 int main(int argc, const char* argv[])
 {
     auto args = ParseArguments(argc, argv);
+    if (args.guiMode)
+    {
+        // NOTE(Chris): Try and work out why this changes the output stream mode :P -- yes, it's valid, idiomatic C++11
+        Log::GetJsonOutStream().EnqueueMessage("");
+        Log::GetAnalytics().SetMode(AnalyticsDaemon::Mode::JSONStdOut, &Log::GetJsonOutStream());
+    }
+    else
+    {
+        Log::GetAnalytics().SetMode(AnalyticsDaemon::Mode::StdOut);
+    }
 
     int result = EXIT_SUCCESS;
     switch (args.mode)
     {
-    case OperationMode::CompareProblem0:
+    case Cfg::OperationMode::CompareProblem0:
     {
         result = CompareProblem0(args.jsonStdin, args.inputPaths);
     } break;
 
-    case OperationMode::CompareProblem1:
+    case Cfg::OperationMode::CompareProblem1:
     {
         result = CompareProblem1(args.jsonStdin, args.inputPaths);
     } break;
 
-    case OperationMode::CompareTwo:
+    case Cfg::OperationMode::CompareTwo:
     {
         result = CompareTwo(args.jsonStdin, args.inputPaths);
     } break;
 
-    case OperationMode::SingleSimulation:
+    case Cfg::OperationMode::SingleSimulation:
     {
         result = SingleSimulation(args.jsonStdin, args.inputPaths.front());
     } break;
 
-    case OperationMode::Preprocess:
+    case Cfg::OperationMode::Preprocess:
     {
         result = Preprocess(args.inputPaths.front());
     } break;

@@ -1,8 +1,9 @@
 {
-    "name" : "GridleElectron",
-    "version" : "0.0.1",
-    "main" : "main.js",
-    "dependencies" : {
-        "jquery" : "*"
-    }
+  "name": "GridleElectron",
+  "version": "0.0.1",
+  "main": "main.js",
+  "dependencies": {
+    "jquery": "*",
+    "mustache": "^2.2.1"
+  }
 }

@@ -1,6 +1,127 @@
 <!DOCTYPE html>
 <html>
   <script src="preprocess.js"></script>
+
+  <script id="headerTemplate" type="x-tmpl-mustache">
+    <h6 class="sec-title">Default Parameters</h6>
+    <div class="row">
+      <div class="six columns">
+        <label for="maxRelErr">Max Relative Error</label>
+        <input type="number" class="u-full-width" placeholder="{{MaxRelErr}}" id="maxRelErr" name="maxRelErr">
+      </div>
+      <div class="six columns">
+        <label for="maxIter">Max Iterations</label>
+        <input type="number" class="u-full-width" placeholder="{{MaxIterations}}" id="maxIter" name="maxIter">
+      </div>
+    </div>
+    <div class="row">
+      <div class="six columns">
+        <label for="ppm">Pixels Per Meter</label>
+        <input type="number" class="u-full-width" placeholder="{{PixelsPerMeter}}" id="ppm" name="ppm">
+      </div>
+      <div class="three columns">
+        <label for="vzip">Vertical Zip</label>
+        <input type="checkbox" id="vzip" name="vzip">
+      </div>
+      <div class="three columns">
+        <label for="hzip">Horizontal Zip</label>
+        <input type="checkbox" id="hzip" name="hzip">
+      </div>
+    </div>
+  </script>
+
+  <script id="header0Or1Template" type="x-tmpl-mustache">
+    <div class="row">
+      <div class="six columns">
+        <label for="innerRad">Inner Circle Radius</label>
+        <input type="number" class="u-full-width" id="innerRad" name="innerRad">
+      </div>
+      <div class="six columns">
+        <label for="outerRad">Outer Circle Radius</label>
+        <input type="number" class="u-full-width" id="outerRad" name="outerRad">
+      </div>
+    </div>
+  </script>
+
+  <script id="selectConstant" type="x-tmpl-mustache">
+    <option value="Constant" selected>Constant</option>
+    <option value="HorizontalLerp">Horizontal Lerp</option>
+    <option value="VerticalLerp">Vertical Lerp</option>
+  </script>
+
+  <script id="selectHLerp" type="x-tmpl-mustache">
+    <option value="Constant">Constant</option>
+    <option value="HorizontalLerp" selected>Horizontal Lerp</option>
+    <option value="VerticalLerp">Vertical Lerp</option>
+  </script>
+
+  <script id="selectVLerp" type="x-tmpl-mustache">
+    <option value="Constant">Constant</option>
+    <option value="HorizontalLerp">Horizontal Lerp</option>
+    <option value="VerticalLerp" selected>Vertical Lerp</option>
+  </script>
+
+  <script id="submitButtonTemplate" type="x-tmpl-mustache">
+    <div class="row" align="right">
+      <input type="button" value="Simulate" onclick="runForm();">
+    </div>
+  </script>
+
+  <script id="simulationDataTemplate" type="x-impl-mustache">
+      <h6 class="sec-title">Simulation</h6>
+      <div class="row">
+        <div class="3 columns">
+          <input type="button" value="Kill Simulation" onclick="killChild();">
+        </div>
+      </div>
+      <div class="row">
+        <div class="u-fill-width">
+          <pre>
+          <code id="gridleOutput">
+          </code>
+          </pre>
+        </div>
+      </div>
+    </div>
+  </script>
+
+  <script id="colorTemplate", type="x-tmpl-mustache">
+    <div class="six columns">
+      <label for="color{{i}}">
+        Color {{i}}
+        <div class="color-box u-fill-width" style="background-color: {{colorString}};">
+        </div>
+      </label>
+      <input type="number" name="color{{i}}" class="u-full-width" placeholder="Constant" value="{{Value}}" {{& disabled}} id="color{{i}}">
+      <select class="u-full-width" name="selectColor{{i}}" id="selectColor{{i}}" onchange="checkConstant(this)">
+        {{& selector}}
+      </select>
+    </div>
+  </script>
+
+  <script id="formTemplate", type="x-impl-mustache">
+    <form id="mainForm">
+      {{& header}}
+      {{& colors}}
+      {{& button}}
+    </form>
+  </script>
+
+  <script id="colorRowTemplate", type="x-impl-mustache">
+    <div class="row">
+      {{& colorObj1}}
+      {{& colorObj2}}
+    </div>
+  </script>
+
+  <script id="colorDataTemplate", type="x-impl-mustache">
+    <h6 class="sec-title">Color Data</h6>
+    {{& colorList}}
+  </script>
+
+
+
+
   <head>
     <meta charset="UTF-8">
     <title>Gridle: Preprocess</title>
@@ -60,6 +181,8 @@
       </div>
     </div>
     <div class="container noselect" id="colorData">
+    </div>
+    <div class="container section noselect" id="simulationData">
     </div>
   </body>
 </html>
