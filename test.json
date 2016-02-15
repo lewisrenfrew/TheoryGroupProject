@@ -1,5 +1,5 @@
 {
-    "ImagePath" : "prob0MR.png",
+    "ImagePath" : "testImg2.png",
     "ColorMapPath" : "cmap.json",
     "MaxRelErr" : 0.0000001,
     "ScaleFactor" : 1,

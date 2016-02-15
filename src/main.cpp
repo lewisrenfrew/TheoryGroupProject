@@ -6,6 +6,7 @@
    ========================================================================== */
 #include "GlobalDefines.hpp"
 #include "FDM.hpp"
+#include "MatrixInversion.hpp"
 #include "AnalyticalGridFunctions.hpp"
 #include "Compare.hpp"
 #include "Grid.hpp"
@@ -222,6 +223,7 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
@@ -394,6 +396,7 @@ SingleSimulation(const bool pathIsJson, const std::string& path)
     grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
+    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     gradGrid.CalculateNegGradient(grid, pixelsPerMeter.ValueOr(100.0));
