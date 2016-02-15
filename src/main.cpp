@@ -175,7 +175,7 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
 
     case Cfg::CalculationMode::MatrixInversion:
     {
-        LOG("Not yet implemented");
+        MatrixInversion::MatrixInversionMethod(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::SOR:
