@@ -1,5 +1,5 @@
 {
-    "ImagePath" : "testImg2.png",
+    "ImagePath" : "testImg0.png",
     "ColorMapPath" : "cmap.json",
     "MaxRelErr" : 0.0000001,
     "ScaleFactor" : 1,
@@ -7,6 +7,7 @@
     "PixelsPerMeter" : 100,
     "HorizontalZip" : false,
     "VerticalZip" : false,
-    "AnalyticInnerRadius" : 5,
-    "AnalyticOuterRadius" : 95
+    "AnalyticInnerRadius" : 3,
+    "AnalyticOuterRadius" : 50,
+    "CalculationMode" : "MatrixInversion"
 }
