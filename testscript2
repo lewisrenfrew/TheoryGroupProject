@@ -6,6 +6,7 @@
 #and saves them to results directory
 ERR=$1
 PRO=$2
+MET=$3
 P1="p0"
 P2="p1"
 P3="p2"
@@ -23,7 +24,7 @@ if [ $2 == $P1 ]; then
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
-	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 299/" > sed.text
+	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 299,/" > sed.text
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
@@ -37,7 +38,7 @@ elif [ $2 == $P2 ]; then
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
-	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 300/" > sed.text
+	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 300,/" > sed.text
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
@@ -51,7 +52,7 @@ elif [ $2 == $P3 ]; then
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
-	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 300/" > sed.text
+	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 300,/" > sed.text
 	#call sed with file as argument
 	sed -i -f sed.text config.json
 	rm sed.text
@@ -62,7 +63,17 @@ elif [ $2 == $P3 ]; then
 	GRID_PARAM="i"
 fi
 
-
+if [ $3 == "MI" ]; then
+	echo "s/\(\\\"CalculationMode\\\" *:*\).*/\\1 \"MatrixInversion\"/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+elif [ $3 == "FD" ]; then
+	echo "s/\(\\\"CalculationMode\\\" *:*\).*/\\1 \"FiniteDiff\"/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+fi
 
 #write sed argument into nex file
 echo "s/\(\\\"MaxRelErr\\\" *:*\).*/\\1$ERR,/" > sed.text

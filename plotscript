@@ -26,19 +26,28 @@ cp ./Plot/*.dat ./Results/$NAME
 
 
 #create plots
-for X in $(ls ./Plot/*.gpi)
+#for X in $(ls ./Plot/*.gpi)
+#do
+#	SHORT="${X:7}" #remove path from X
+#	FILENAME=$(echo "$SHORT" | cut -d. -f1) #remove filetype from X
+#	mkdir -p ./Results/$NAME/$FILENAME #create sub directory for diff plots
+#	echo "Created Directory ./Results/$NAME/$FILENAME"
+#	gnuplot "$X" #run gnuplot wiht config files
+#	echo "Plotting $FILENAME"
+#	cp ./Grid.html ./Results/${NAME}/$FILENAME/${FILENAME}.html #copy over and rename result
+#	cp ./gp_image_01.png ./Results/${NAME}/$FILENAME/ #cp over required img
+#	echo "Plots coppied to ./Results/$NAME/$FILENAME"
+#done
+#echo "Script Complete"
+
+for X in $(ls *.html)
 do
-	SHORT="${X:7}" #remove path from X
-	FILENAME=$(echo "$SHORT" | cut -d. -f1) #remove filetype from X
+	FILENAME=$(echo "$X" | cut -d. -f1) #remove filetype from X
 	mkdir -p ./Results/$NAME/$FILENAME #create sub directory for diff plots
 	echo "Created Directory ./Results/$NAME/$FILENAME"
-	gnuplot "$X" #run gnuplot wiht config files
-	echo "Plotting $FILENAME"
-	cp ./Grid.html ./Results/${NAME}/$FILENAME/${FILENAME}.html #copy over and rename result
+	cp ./$X ./Results/${NAME}/$FILENAME/${FILENAME}.html #copy over and rename result
 	cp ./gp_image_01.png ./Results/${NAME}/$FILENAME/ #cp over required img
 	echo "Plots coppied to ./Results/$NAME/$FILENAME"
 done
 echo "Script Complete"
-
-
 
