@@ -22,138 +22,74 @@ namespace MatrixInversion
     MatrixInversionMethod(Grid* grid, const f64 stopPoint , const u64 maxIter)
     {
         using namespace Eigen;
-        // get the matrix from grid
-        // Matrix<f64, Dynamic, Dynamic> Ad;
-        // Matrix<f64, 1, Dynamic> known;
-        // Matrix<f64, 1, Dynamic> V;
-        //ArrayXXf A = ArrayXXf::Zero(grid->lineLength*grid->numLines
-        //, grid->lineLength * grid->numLines);
         
+        // checking if square matrix if not return nothing
+        if(grid->lineLength != grid->numLines)
+        {
+            return;
+        }
+        // create three matricies and fill them with zeroes
         MatrixXd A = MatrixXd::Zero(grid->lineLength * grid->numLines
                       , grid->lineLength * grid->numLines);
               
-        MatrixXd V = MatrixXd::Zero(1,(*grid).lineLength * (*grid).numLines);
-        MatrixXd known(1,(*grid).lineLength * (*grid).numLines);
-        int k=0;
-        int j=1;
+        MatrixXd V = MatrixXd::Zero(1,grid->lineLength * grid->numLines);
+        MatrixXd known(1,grid->lineLength * grid->numLines);
 
-        // find the nodes
+        // counter what line on the actual grid the program is in 
+        int k=0;
+
+        
         // grid->lineLength  (how to find the line wrapping)
-        // start loop through number of nodes
+        // Loop through the number of columns on A
         for (int y = 0; y < A.cols() -2;)
         {
-            
-            //std::cout<<"y is: "<<y<< "\n";           
+            // Loop through the number of columns of the grid 
             for (uint x = 0; x <grid->lineLength ; ++x)
             {
-                
-                if(y >= A.cols())
-                {
-                    continue;
-                }
+                //check if the current pixel is known
                 if ((*grid).fixedPoints.count(k * grid->numLines + x) != 0)
                 {
-                    
-                   
-                    //put that value in the cloulum vector C
-                    A(y,y) = 1;
-                   
+                    // If so add one to that place in A and add the known pixel
+                    // to that place in known
+                    A(y,y) = 1;                   
                     known(0,y)=(*grid).voltages[k * grid->numLines + x];
-                    std::cout<<known(0,y);
-                    //std::cout<<A(y,y);
-                    //std::cin>>j;
-                    //std::cout<<y<<A.row(y)<<"\n"; 
+
+                    // The way A and known are structured y need to be incremented here
                     y++;
-                    j++;
-                    
-                    
                         
                 }
 
                 else
                 {
                    
-                    
-                     A(y,y)= -4;
-                    //put 1 in A one left and one right of current place
-                     if(y<A.cols()-1)
-                     {
-                         
-                         A(y,y+1) = 1;
-                         
-                     }
-                     //if(y<A.cols()-1)
-                     {
-                                                  
-                         A(y,y-1) = 1;
-                         
-                     }
-                     
-                     // put 1 in A one up and one down of current place
-                     if( y+grid->numLines<A.cols())
-                     {
-                         
-                         A(y,y+grid->numLines) = 1;
-                                               
-                     }
+                    // If not known add a -4 in A for current pixel and 1 for
+                    //each adjecent pixel
+                    A(y,y)= -4;
 
-                     if(!(y <= grid->numLines))
-                     {                         
-                         A(y,y-(grid->numLines)) = 1 ;                  
-                     }                   
+                    //put 1 in A one left and one right of current place
+                    A(y,y+1) = 1;                                                                                     
+                    A(y,y-1) = 1;
                      
-                     // put a 0 in the known  because don't know this point
-                     known(0,y) = 0;
-                     //std::cout<<y<<A.row(y)<<"\n"; 
-                     std::cout<<known(0,y);
-                     y++;
-                     j++;
-                }               
-                
-               
+                    // put 1 in A one up and one down of current place
+                    A(y,y+grid->numLines) = 1;
+                    A(y,y-(grid->numLines)) = 1 ;                  
+                     
+                    y++;                     
+                }
             }
-            
-            k++;
-            
-            std::cout<<"\n";
-            if (y != 0 )
-            {
-                // std::cout<<"y: "<<y <<" \n";
-            }
+            // add one to the k value here
+            k++;            
         }
         
-        //std::cout<<A<<"\n";
-        // calculate the V bu mutilpying (invers of A) * (known)
-        
-       
-        // FullPivLU<decltype(A)> LU(A);
-        if(1==1)//LU.isInvertible())
-        {
-            std::cout<<"it passed!! : "<< "\n"; 
-            V = A.inverse() * known.transpose();
-        }
-        // //TODO change to transpose
-        // else
-        // {
-        //     throw std::invalid_argument("not invertible");
-        // }
-               
-           
-        
-    //(std::exception& ex)
-        // {
-        //     std::cout << ex.what() << std::endl;
-        // }
- 
-        
-        std::cout<<"filling in \n"; 
+        // calculate the V by mutilpying (invers of A) * (known)
+        V = A.inverse() * known.transpose();
+
+        // Fill in the grid with calculated values
         for (int i = 1; i < V.rows() ; i++ )
-        {
-        
-            //std::cout<<V(i-1)<<" \n";
+        {            
             grid->voltages[i] = V(i);
         }
-        std::cout<<" done \n\n";
+        
     }
 
 }
