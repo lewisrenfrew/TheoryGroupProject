@@ -61,6 +61,40 @@ elif [ $2 == $P3 ]; then
 	sed -i -f sed.text config.json
 	rm sed.text
 	GRID_PARAM="i"
+elif [ $2 == "M0" ]; then
+	#write sed argument into nex file
+	echo "s/\(\\\"ImagePath\\\" *:*\).*/\\1 \"MIprob0.png\",/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+	echo "s/\(\\\"AnalyticInnerRadius\\\" *:*\).*/\\1 3.5,/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 50.5,/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+elif [ $2 == "M1" ]; then
+	#write sed argument into nex file
+	echo "s/\(\\\"ImagePath\\\" *:*\).*/\\1 \"MIprob1.png\",/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+	echo "s/\(\\\"AnalyticInnerRadius\\\" *:*\).*/\\1 3.5,/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+	echo "s/\(\\\"AnalyticOuterRadius\\\" *:*\).*/\\1 50.5,/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
+elif [ $2 == "M2" ]; then
+	#write sed argument into nex file
+	echo "s/\(\\\"ImagePath\\\" *:*\).*/\\1 \"MIprob2.4.png\",/" > sed.text
+	#call sed with file as argument
+	sed -i -f sed.text config.json
+	rm sed.text
 fi
 
 if [ $3 == "MI" ]; then
