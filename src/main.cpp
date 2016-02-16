@@ -6,6 +6,7 @@
    ========================================================================== */
 #include "GlobalDefines.hpp"
 #include "FDM.hpp"
+#include "FDMwithSOR.hpp"
 #include "MatrixInversion.hpp"
 #include "AnalyticalGridFunctions.hpp"
 #include "Compare.hpp"
@@ -180,7 +181,8 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
 
     case Cfg::CalculationMode::SOR:
     {
-        LOG("Not yet implemented");
+        // LOG("Not yet implemented");
+        SOR::SolveGridLaplacianZero(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::AMR:
