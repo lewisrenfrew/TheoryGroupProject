@@ -548,6 +548,7 @@ static
 bool
 GnuplotString(const std::string& data)
 {
+#if 0
     FILE* gp;
     gp = popen(gnuplot, "w");
     if (!gp)
@@ -562,6 +563,34 @@ GnuplotString(const std::string& data)
         return false;
 
     return true;
+#else
+    FILE* gph;
+    const char * const name = "PlotFile.gpi";
+    gph = fopen(name, "w");
+    if (!gph)
+    {
+        return false;
+    }
+
+    fprintf(gph, "%s\n", data.c_str());
+    fclose(gph);
+    std::string gplot(gnuplot);
+    gplot += " ";
+    gplot += name;
+
+    FILE* gp;
+    gp = popen(gplot.c_str(), "w");
+    if (!gp)
+    {
+        LOG("Error opening gnuplot");
+        return false;
+    }
+    if (!pclose(gp))
+        return false;
+
+    return true;
+
+#endif
 }
 
 static
