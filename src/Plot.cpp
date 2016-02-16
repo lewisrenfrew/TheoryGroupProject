@@ -16,12 +16,15 @@
 #include <cmath>
 #include <cstdio>
 
-static constexpr const char* const gnuplot = "gnuplot 2> /dev/null";
+// static constexpr const char* const gnuplot = "gnuplot 2> /dev/null";
+
+static constexpr const char* const gnuplot = "gnuplot";
 
 static
-bool
-PlotColorMap(const Grid& grid, const char* outputName, const char* titleName)
+std::string
+PlotColorMapString(const Grid& grid, const char* outputName, const char* titleName)
 {
+    #if 0
     FILE* gp;
     gp = popen(gnuplot, "w");
     if (!gp)
@@ -63,12 +66,51 @@ PlotColorMap(const Grid& grid, const char* outputName, const char* titleName)
         return false;
 
     return true;
+    #else
+    JasUnpack(grid, lineLength, numLines);
+    // NOTE(Chris): Yes, I'm lazy here
+    char buf[4096];
+    snprintf(buf, sizeof(buf)-1,
+            "set terminal canvas rounded size 700,500 enhanced mousing fsize 10 "
+            "lw 1.6 fontscale 1 standalone\n"
+            "set output \"%s\"\n"
+            "load 'Plot/MorelandColors.plt'\n"
+            "set xlabel \"x\"\nset ylabel \"y\"\n"
+            "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
+            "set style data lines\n"
+            "set title \"Stable Potential (V)\"\n"
+            "plot '-' with image title \"%s\"\n",
+            outputName,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
+            titleName);
+    std::string result(buf);
+
+    for (uint y = 0; y < numLines; ++y)
+    {
+        for (uint x = 0; x < lineLength; ++x)
+        {
+            char buf1[1024];
+            snprintf(buf1, sizeof(buf1)-1, "%u %u %f\n", x, y, grid.voltages[y * grid.lineLength + x]);
+            result += buf1;
+        }
+        // fprintf(gp, "\n");
+        result += "\n";
+    }
+    // fprintf(gp, "e\n");
+    result += "e\n";
+    return result;
+
+    #endif
 }
 
 static
-bool
-PlotContourMap(const Grid& grid, const char* outputName, const char* titleName)
+std::string
+PlotContourMapString(const Grid& grid, const char* outputName, const char* titleName)
 {
+    #if 0
     FILE* gp;
     gp = popen(gnuplot, "w");
     if (!gp)
@@ -117,13 +159,58 @@ PlotContourMap(const Grid& grid, const char* outputName, const char* titleName)
         return false;
 
     return true;
+    #else
+    JasUnpack(grid, lineLength, numLines);
+
+    char buf[4096];
+    snprintf(buf, sizeof(buf) - 1,
+            "set terminal canvas rounded size 700,500 enhanced mousing "
+            "fsize 10 lw 1.6 fontscale 1 standalone\n"
+            "set output \"%s\"\n"
+            "load 'Plot/MorelandColors.plt'\n"
+            "set key outside\n"
+            "set view map\n"
+            "unset surface\n"
+            "set contour base\n"
+            "set cntrparam bspline\n"
+            "set cntrparam levels auto 20\n"
+            "set xlabel \"x\"\nset ylabel \"y\"\n"
+            "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
+            "set style data lines\n"
+            "set title \"%s\"\n"
+            "set key default\n"
+            "splot '-' with lines title \"\"\n",
+            outputName,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
+            titleName);
+    std::string result(buf);
+
+    for (uint y = 0; y < numLines; ++y)
+    {
+        for (uint x = 0; x < lineLength; ++x)
+        {
+            char buf1[1024];
+            snprintf(buf1, sizeof(buf1)-1, "%u %u %f\n", x, y, grid.voltages[y * grid.lineLength + x]);
+            result += buf1;
+        }
+        result += "\n";
+    }
+    result += "e\n";
+    // fprintf(gp, "e\n");
+    return result;
+
+    #endif
 }
 
 static
-bool
-PlotVectorField(const GradientGrid& grid, const char* outputName, const char* titleName)
+std::string
+PlotVectorFieldString(const GradientGrid& grid, const char* outputName, const char* titleName)
 {
     const uint maxVecPerSide = 50;
+    #if 0
     FILE* gp;
     gp = popen(gnuplot, "w");
     if (!gp)
@@ -188,6 +275,68 @@ PlotVectorField(const GradientGrid& grid, const char* outputName, const char* ti
         return false;
 
     return true;
+    #else
+
+    JasUnpack(grid, lineLength, numLines);
+
+    using namespace Jasnah;
+    auto VecNorm = [](const V2d& vec) -> f64
+        {
+            return std::sqrt(vec.x*vec.x + vec.y*vec.y);
+        };
+    auto Max = [](f64 x, f64 y)
+        {
+            return x > y
+            ? x
+            : y;
+        };
+
+    const f64 maxNorm = grid.gradients | (Map << VecNorm) | (Reduce << 0.0 << Max);
+    // LOG("Max norm %f", maxNorm);
+
+    const uint maxSide = numLines > lineLength ? numLines : lineLength;
+    const uint stepSize = (maxSide / maxVecPerSide > 0) ? maxSide / maxVecPerSide : 1;
+    const f64 scaling = maxSide / (0.5 * (f64)maxVecPerSide * maxNorm);
+
+    char buf[4096];
+    snprintf(buf, sizeof(buf) - 1,
+            "set terminal canvas butt size 700,500 enhanced mousing "
+            "fsize 10 lw 1 fontscale 1 standalone\n"
+            "set output \"%s\"\n"
+            "load 'Plot/MorelandColors.plt'\n"
+            "set xlabel \"x\"\nset ylabel \"y\"\n"
+            "set xrange [0:%u]; set yrange [0:%u]\n"
+            "set size ratio %f\n"
+            "set style data lines\n"
+            "set title \"E-field (V/m)\"\n"
+            "scaling = %f\n"
+            "plot '-' using 1:2:($3*scaling):($4*scaling):(sqrt($3*$3+$4*$4)) with vectors"
+            " filled lc palette title \"\"\n",
+            outputName,
+            lineLength-1,
+            numLines-1,
+            (f64)numLines / (f64)lineLength,
+            scaling);
+
+    std::string result(buf);
+
+    for (uint y = 0; y < numLines; y += stepSize)
+    {
+        for (uint x = 0; x < lineLength; x += stepSize)
+        {
+            char buf1[1024];
+            snprintf(buf1, sizeof(buf1) - 1, "%u %u %f %f\n", x, y,
+                    grid.gradients[y * lineLength + x].x,
+                    grid.gradients[y * lineLength + x].y);
+            result += buf1;
+        }
+        result += "\n";
+    }
+    // fprintf(gp, "e\n");
+    result += "e\n";
+    // fprintf(gp, "e\n");
+    return result;
+    #endif
 }
 
 
@@ -397,6 +546,26 @@ WriteGradientFiles(const GradientGrid& grid,
 
 static
 bool
+GnuplotString(const std::string& data)
+{
+    FILE* gp;
+    gp = popen(gnuplot, "w");
+    if (!gp)
+    {
+        LOG("Error opening gnuplot");
+        return false;
+    }
+    fprintf(gp, "%s\n", data.c_str());
+    fflush(gp);
+
+    if (!pclose(gp))
+        return false;
+
+    return true;
+}
+
+static
+bool
 PlotSingleSim(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log)
 {
     TIME_FUNCTION();
@@ -406,9 +575,12 @@ PlotSingleSim(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log)
     // NOTE(Chris): These assume that everything works
 
     using namespace Plot::SingleSimFiles;
-    PlotColorMap(*grids.singleSimGrid, gridPlot, "Stable Voltage (V)");
-    PlotContourMap(*grids.singleSimGrid, contourPlot, "Stable Voltage (V)");
-    PlotVectorField(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
+    std::string gpStr;
+    gpStr += PlotColorMapString(*grids.singleSimGrid, gridPlot, "Stable Voltage (V)");
+    gpStr += PlotContourMapString(*grids.singleSimGrid, contourPlot, "Stable Voltage (V)");
+    gpStr += PlotVectorFieldString(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
+
+    GnuplotString(gpStr);
 
     // Serialize output files if reqd
     Log::GetAnalytics().ReportGraphOutput(gridPlot, "Voltage Plot");
@@ -422,6 +594,7 @@ static
 bool
 PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log)
 {
+    TIME_FUNCTION();
     // expects all plottable grids
     if (!grids.singleSimGrid
         || !grids.singleSimVector
@@ -432,13 +605,16 @@ PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths lo
     // NOTE(Chris): These assume that everything works
 
     using namespace Plot::CompareProbFiles;
-    PlotColorMap(*grids.singleSimGrid, gridPlot, "Stable Voltage (V)");
-    PlotContourMap(*grids.singleSimGrid, contourPlot, "Stable Voltage (V)");
-    PlotVectorField(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
-    PlotColorMap(*grids.grid2, gridAnalyticPlot, "Stable Voltage - Analytic - (V)");
-    PlotContourMap(*grids.grid2, contourAnalyticPlot, "Stable Voltage - Analytic - (V)");
+    std::string gpStr;
+    gpStr += PlotColorMapString(*grids.singleSimGrid, gridPlot, "Stable Voltage (V)");
+    gpStr += PlotContourMapString(*grids.singleSimGrid, contourPlot, "Stable Voltage (V)");
+    gpStr += PlotVectorFieldString(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
+    gpStr += PlotColorMapString(*grids.grid2, gridAnalyticPlot, "Stable Voltage - Analytic - (V)");
+    gpStr += PlotContourMapString(*grids.grid2, contourAnalyticPlot, "Stable Voltage - Analytic - (V)");
     // PlotVectorField(*grids.vector2, vectorPlot, "Electric Field (V/m)");
-    PlotColorMap(*grids.difference, differencePlot, "Difference (V)");
+    gpStr += PlotColorMapString(*grids.difference, differencePlot, "Difference (V)");
+
+    GnuplotString(gpStr);
 
     Log::GetAnalytics().ReportGraphOutput(gridPlot, "Voltage Plot");
     Log::GetAnalytics().ReportGraphOutput(contourPlot, "Voltage Contour Plot");
@@ -468,13 +644,16 @@ PlotCompareTwo(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log
 
     using namespace Plot::CompareTwoFiles;
 
-    PlotColorMap(*grids.singleSimGrid, gridOnePlot, "Stable Voltage (V)");
-    PlotContourMap(*grids.singleSimGrid, contourOnePlot, "Stable Voltage (V)");
-    PlotVectorField(*grids.singleSimVector, vectorOnePlot, "Electric Field (V/m)");
-    PlotColorMap(*grids.grid2, gridTwoPlot, "Stable Voltage (V)");
-    PlotContourMap(*grids.grid2, contourTwoPlot, "Stable Voltage (V)");
-    PlotVectorField(*grids.vector2, vectorTwoPlot, "Electric Field (V/m)");
-    PlotColorMap(*grids.difference, differencePlot, "Difference (V)");
+    std::string gpStr;
+    gpStr += PlotColorMapString(*grids.singleSimGrid, gridOnePlot, "Stable Voltage (V)");
+    gpStr += PlotContourMapString(*grids.singleSimGrid, contourOnePlot, "Stable Voltage (V)");
+    gpStr += PlotVectorFieldString(*grids.singleSimVector, vectorOnePlot, "Electric Field (V/m)");
+    gpStr += PlotColorMapString(*grids.grid2, gridTwoPlot, "Stable Voltage (V)");
+    gpStr += PlotContourMapString(*grids.grid2, contourTwoPlot, "Stable Voltage (V)");
+    gpStr += PlotVectorFieldString(*grids.vector2, vectorTwoPlot, "Electric Field (V/m)");
+    gpStr += PlotColorMapString(*grids.difference, differencePlot, "Difference (V)");
+
+    GnuplotString(gpStr);
 
     // Serialize output files if reqd
     Log::GetAnalytics().ReportGraphOutput(gridOnePlot, "Voltage One Plot");

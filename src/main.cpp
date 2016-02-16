@@ -220,7 +220,8 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
     JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
 
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
-    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
+    if (!grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1)))
+        return EXIT_FAILURE;
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
     //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
@@ -302,7 +303,8 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
     JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
 
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
-    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
+    if (!grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1)))
+        return EXIT_FAILURE;
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
@@ -393,7 +395,8 @@ SingleSimulation(const bool pathIsJson, const std::string& path)
     JasUnpack((*cfg), imagePath, zeroTol, scaleFactor, pixelsPerMeter, maxIter);
 
     Grid grid(cfg->horizZip.ValueOr(false), cfg->verticZip.ValueOr(false));
-    grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1));
+    if (!grid.LoadFromImage(imagePath.c_str(), cfg->constraints, scaleFactor.ValueOr(1)))
+        return EXIT_FAILURE;
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
     //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
