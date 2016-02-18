@@ -183,7 +183,7 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
 
     case Cfg::CalculationMode::GaussSeidel:
     {
-        GaussSeidel::SolveGridLaplacianZeroGaussSeidel(grid, zeroTol, maxIter);
+        GaussSeidel::GaussSeidelSolver(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::RedBlack:
@@ -377,13 +377,13 @@ CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
 
     if (pathsAreJson)
     {
-        cfg1 = Cfg::LoadGridConfigString(paths.front());
-        cfg2 = Cfg::LoadGridConfigString(paths.front());
+        cfg1 = Cfg::LoadGridConfigString(paths[0]);
+        cfg2 = Cfg::LoadGridConfigString(paths[1]);
     }
     else
     {
-        cfg1 = Cfg::LoadGridConfigFile(paths.front().c_str());
-        cfg2 = Cfg::LoadGridConfigFile(paths.front().c_str());
+        cfg1 = Cfg::LoadGridConfigFile(paths[0].c_str());
+        cfg2 = Cfg::LoadGridConfigFile(paths[1].c_str());
     }
 
     if (!cfg1 || !cfg2)
@@ -392,6 +392,7 @@ CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
         return EXIT_FAILURE;
     }
 
+    // NOTE(Chris): Grid 1
     Grid grid1(cfg1->horizZip.ValueOr(false), cfg1->verticZip.ValueOr(false));
     if (!grid1.LoadFromImage(cfg1->imagePath.c_str(), cfg1->constraints, cfg1->scaleFactor.ValueOr(1)))
         return EXIT_FAILURE;
@@ -402,27 +403,35 @@ CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
     const f64 ppm = cfg1->pixelsPerMeter.ValueOr(100.0);
     gradGrid1.CalculateNegGradient(grid1, ppm);
 
+    // NOTE(Chris): Grid 2
+    Grid grid2(cfg2->horizZip.ValueOr(false), cfg2->verticZip.ValueOr(false));
+    if (!grid2.LoadFromImage(cfg2->imagePath.c_str(), cfg2->constraints, cfg2->scaleFactor.ValueOr(1)))
+        return EXIT_FAILURE;
+
+    DispatchSolver(cfg2->mode, &grid2, cfg2->zeroTol.ValueOr(0.001), cfg2->maxIter.ValueOr(20000));
+
+    GradientGrid gradGrid2;
+    const f64 ppm2 = cfg2->pixelsPerMeter.ValueOr(100.0);
+    gradGrid2.CalculateNegGradient(grid2, ppm2);
+
+
     Jasnah::Option<Grid> diff = Cmp::Difference(grid1, grid2);
 
     if (!diff)
-    {
         return EXIT_FAILURE;
-    }
 
     using namespace Plot;
 
     PlottableGrids grids;
-    grids.singleSimGrid = grid;
-    grids.grid2 = analytic.first;
-    grids.singleSimVector = gradGrid;
+    grids.singleSimGrid = grid1;
+    grids.grid2 = grid2;
+    grids.singleSimVector = gradGrid1;
     grids.difference = diff;
-    grids.vector2 = analytic.second;
+    grids.vector2 = gradGrid2;
 
-    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1);
+    WritePlotFiles(grids, Cfg::OperationMode::CompareTwo);
 
-    LOG("Not yet implemented");
     return EXIT_SUCCESS;
-
 }
 
 static

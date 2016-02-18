@@ -48,7 +48,7 @@ namespace Cmp
     }
 
     Jasnah::Option<GradientGrid>
-    Difference(const GradientGrid& gridA, const GradientGrid& gridB, DifferenceType diffType)
+    Difference(const GradientGrid& gridA, const GradientGrid& gridB)
     {
         if (gridA.lineLength != gridB.lineLength
             && gridA.numLines != gridB.numLines)
@@ -61,27 +61,10 @@ namespace Cmp
         result.numLines = gridA.numLines;
 
 
-        switch (diffType)
+        for (uint i = 0; i < gridA.gradients.size(); ++i)
         {
-        case DifferenceType::Relative:
-        {
-            for (uint i = 0; i < gridA.gradients.size(); ++i)
-            {
-                result.gradients.push_back(gridA.gradients[i] - gridB.gradients[i]);
-            }
-        } break;
-
-        case DifferenceType::Absolute:
-        {
-            for (uint i = 0; i < gridA.gradients.size(); ++i)
-            {
-                // result.gradients.push_back(std::abs(gridA.gradients[i] - gridB.gradients[i]));
-                V2d absDiff(std::abs(gridA.gradients[i].x - gridB.gradients[i].x),
-                            std::abs(gridA.gradients[i].y - gridB.gradients[i].y));
-            }
-        } break;
+            result.gradients.push_back(gridA.gradients[i] - gridB.gradients[i]);
         }
-
         return result;
     }
 }

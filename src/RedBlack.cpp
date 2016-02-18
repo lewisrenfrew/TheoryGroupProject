@@ -78,11 +78,11 @@ namespace RedBlack
         uint errorChunk = 500;
 
         // Hand-waving 10k iterations per thread as minimum to not be dominated by context switches etc.
-        const uint numWorkChunks = (voltages.size() / 2 / 10000 > 0) ? voltages.size() / 2 /  10000 : 1;
-        const uint numThreads = (voltages.size() / 2 / omp_get_max_threads() >= 10000)
-            ? (omp_get_max_threads() > MaxThreads
-               ? MaxThreads
-               : omp_get_max_threads())
+        const uint numWorkChunks = (voltages.size() / 20000 > 0) ? (voltages.size() / 20000) : 1;
+        const uint numThreads = (numWorkChunks > omp_get_max_threads())
+            ? ((MaxThreads > omp_get_max_threads())
+               ? omp_get_max_threads()
+               : MaxThreads)
             : numWorkChunks;
 
         omp_set_num_threads(numThreads);

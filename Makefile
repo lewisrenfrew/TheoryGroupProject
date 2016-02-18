@@ -1,7 +1,6 @@
 # CXX=clang++
-CXX=g++
+CXX=g++-5
 # CXX=g++
-
 
 HERE:=$(shell pwd)
 
@@ -45,7 +44,7 @@ FFLAGS+= -ftemplate-depth=1024
 endif
 ## Enable openmp on g++
 ifdef ENABLEOPENMP
-ifeq ($(CXX),$(filter $(CXX),g++ g++))
+ifeq ($(CXX),$(filter $(CXX),g++-5 g++))
 FFLAGS+= -DGOMP
 OPTFLAGS+= -fopenmp
 endif

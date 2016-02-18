@@ -29,10 +29,10 @@ namespace Cmp
     Difference(const Grid& gridA, const Grid& gridB,
                DifferenceType diffType = DifferenceType::Absolute);
 
-    /// Does the same as above but for gradient grids, same limitations.
+    /// Does the same as above but for gradient grids, same
+    /// limitations -- DifferenceType doesn't make sense here though
     Jasnah::Option<GradientGrid>
-    Difference(const GradientGrid& gridA, const GradientGrid& gridB,
-               DifferenceType diffType = DifferenceType::Absolute);
+    Difference(const GradientGrid& gridA, const GradientGrid& gridB);
 }
 
 #endif

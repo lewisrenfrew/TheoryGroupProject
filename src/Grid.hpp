@@ -10,7 +10,6 @@
 #define GRID_H
 #include "GlobalDefines.hpp"
 #include "Jasnah.hpp"
-#include "boost/align.hpp"
 #include <memory>
 #include <unordered_map>
 
@@ -34,6 +33,7 @@ union RGBA
     operator=(const RGBA&) = default;
     inline RGBA&
     operator=(u32 other) { rgba = other; return *this; }
+    /// Compare as u32
     inline bool
     operator==(RGBA other) const
     { return this->rgba == other.rgba; }
@@ -133,20 +133,17 @@ enum class ConstraintType
     OUTSIDE, // Ignore
     LERP_HORIZ, // Lerp along x
     LERP_VERTIC, // Lerp along y
-    // ZIP_X, // Link top and bottom rows
-    // ZIP_Y, // Link left and right cols
 };
 
 typedef std::pair<ConstraintType, f64> Constraint;
 
-/// Stores the state of the grid. This API will be VERY prone to
-/// breakage for now
+/// Object representing a grid. This is the key object in this system.
 class Grid
 {
 public:
     /// Stores the voltage for each cell
     // DoubleVec voltages;
-    std::vector<f64, boost::alignment::aligned_allocator<f64, 32> > voltages;
+    std::vector<f64> voltages;
     /// Width of the simulation area
     uint lineLength;
     /// Height of the simulation area

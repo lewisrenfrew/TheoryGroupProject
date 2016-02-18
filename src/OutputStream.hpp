@@ -18,11 +18,16 @@
 #include <thread>
 #include <chrono>
 
+/// Converts the logging output stream to output json messages, these
+/// are use in conjunction with the GUI as newline delimited JSON.
+/// This method creates an additional thread to prepare and emit the
+/// messages
 class JsonOutputStream
 {
 public:
     typedef std::lock_guard<std::mutex> ScopeLock;
 
+    /// Constructor taking a pointer to the log object (there should only be one of these)
     JsonOutputStream(Lethani::Logfile* dbg)
         : queueLock_(),
           logThread_(),
@@ -36,6 +41,7 @@ public:
         logThread_ = std::thread(&JsonOutputStream::LogLoop, this);
     }
 
+    /// Destructor, resets the output stream to its normal settings in case this happens to be removed before the program terminates
     ~JsonOutputStream()
     {
         exit_ = true;
@@ -95,6 +101,8 @@ public:
         }
     }
 
+    /// Appends a message to the queue with the name of the function
+    /// timed and how long it took
     void
     EnqueueFunctionTimeData(const char* fnName,
                             const std::chrono::milliseconds duration)
@@ -109,6 +117,9 @@ public:
         messageQueue_.push_back(msg);
     }
 
+    /// Appends a message to the queue stating that a graph has been
+    /// output to a certain file and a message with information about
+    /// what the graph contains
     void
     EnqueueGraphOutput(const char* filename, const char* message)
     {
@@ -123,6 +134,7 @@ public:
     }
 
 private:
+    /// Split a string by delimiter, returning a vector split strings
     static std::vector<std::string>
     SplitString(const std::string& str, const char delim)
     {
@@ -137,6 +149,8 @@ private:
         return result;
     }
 
+    /// Split a string and by newline and return a vector of the
+    /// produced messages
     static std::vector<std::string>
     StringToMessage(const std::string& str)
     {
@@ -153,18 +167,27 @@ private:
         return result;
     }
 
+    /// Mutex for the message queue
     std::mutex queueLock_;
+    /// Thread for logging
     std::thread logThread_;
     std::vector<std::string> messageQueue_;
+    /// Stringstream onto which the Logfile class logs
     std::stringstream outStream_;
+    /// Lock shared with the logfile class for not clobbering the stringstream
     std::mutex streamLock_;
+    /// Pointer to the logfile instance
     Lethani::Logfile* dbg_;
+    /// Flag to tell the message thread that we want to exit
     std::atomic<bool> exit_;
 };
 
+/// Handles reporting function analytics
 class AnalyticsDaemon
 {
 public:
+    /// Operation mode determines the output of the analytics, None,
+    /// Normally to Stdout or a special JSON messages
     enum class Mode
     {
         None,
@@ -176,6 +199,8 @@ public:
     {
     }
 
+    /// Used to report the time taken by a timed function, called by
+    /// the TIME_FUNCTION macro
     void
     ReportTimedFunction(const char* fnName,
                         const std::chrono::milliseconds duration)
@@ -199,6 +224,9 @@ public:
         }
     }
 
+    /// Used to send a message that a graph has been written to a
+    /// certain filename along with additional information about the
+    /// graph
     void
     ReportGraphOutput(const char* fileName, const char* message)
     {
@@ -220,6 +248,8 @@ public:
         }
     }
 
+    /// Changes the operation mode of the AnalyticsDaemon, a
+    /// JsonOutputStream instance must be provided to log to JSON
     void SetMode(Mode mode, JsonOutputStream* str = nullptr)
     {
         if (mode == Mode::JSONStdOut && str == nullptr)

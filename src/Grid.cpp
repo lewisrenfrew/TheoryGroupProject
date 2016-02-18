@@ -88,30 +88,7 @@ Grid::LoadFromImage(const char* imagePath,
                 case ConstraintType::OUTSIDE:
                 {
                     AddFixedPoint(xLoc, yLoc, 0.0);
-                    // Do nothing - maybe set to constant 0?
                 } break;
-
-                // case ConstraintType::ZIP_X:
-                // {
-                //     if (yLoc != 0 && yLoc != numScanlines)
-                //     {
-                //         LOG("Horizontal Zip not in top or bottom row, ignoring");
-                //         continue;
-                //     }
-                //     AddZipPoint(xLoc, yLoc, Constraint::ZIP_X);
-
-                // } break;
-
-                // case ConstraintType::ZIP_Y:
-                // {
-                //     if (xLoc != 0 && xLoc != numScanlines)
-                //     {
-                //         LOG("Vertical Zip not in first or last column, ignoring");
-                //         continue;
-                //     }
-                //     AddZipPoint(xLoc, yLoc, Constraint::ZIP_Y);
-
-                // } break;
 
                 case ConstraintType::LERP_HORIZ:
                     // Need to scan and handle these later
@@ -126,6 +103,8 @@ Grid::LoadFromImage(const char* imagePath,
             }
         }
 
+    // Loop over horizLerp points to find length of contiguous row,
+    // then interpolate and set to fixed values
     auto horizLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
                                   [](RemRefT<decltype(colorMapping)>::value_type val)
                                   {
@@ -181,7 +160,7 @@ Grid::LoadFromImage(const char* imagePath,
                                      return val.second.first == ConstraintType::LERP_HORIZ;
                                  });
     }
-    // Same can be done trivially for vertical lerp
+    // Here we do the same for contiguous columns of vertical lerp
     auto verticLerp = std::find_if(std::begin(colorMapping), std::end(colorMapping),
                                    [](RemRefT<decltype(colorMapping)>::value_type val)
                                    {
@@ -299,7 +278,7 @@ Grid::InitialiseBasicGrid(const f64 plusWall, const f64 minusWall)
     }
 }
 
-/// Prints the grid to stdout, useful for debugging at low res
+/// Prints the grid to stdout, useful for debugging at low res, not used much anymore
 void
 Grid::Print()
 {

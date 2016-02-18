@@ -15,12 +15,11 @@
 class Grid;
 namespace FDM
 {
-    /// The function that does the work for now. Repeatedly applies a
-    /// finite difference scheme to the grid, until the maximum relative
-    /// change over one iteration is less zeroTol or maxIter iterations
-    /// have taken place.
+    /// Solves the Grid using a finite difference method, set parallel
+    /// to false to run single threaded, the zeroTol and maxIter
+    /// parameters control the convergence breaking on whichever comes first.
     void
     FDMSolver(Grid* grid, const f64 zeroTol,
-                           const u64 maxIter, bool parallel = true);
+              const u64 maxIter, bool parallel = true);
 }
 #endif

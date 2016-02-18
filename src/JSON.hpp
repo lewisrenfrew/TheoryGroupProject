@@ -16,14 +16,17 @@
 
 namespace Cfg
 {
+    /// Enum for the method to use for a certain calcuation
     enum class CalculationMode
     {
         FiniteDiff,
         MatrixInversion,
-        RedBlack
+        RedBlack,
         GaussSeidel,
     };
 
+    /// Mode the program is operating. The entire program is
+    /// essentially a state machine
     enum class OperationMode
     {
         SingleSimulation,
@@ -33,6 +36,9 @@ namespace Cfg
         Preprocess
     };
 
+    /// Holds the data parsed from a JSON config file, much of it is
+    /// optional but we let each mode handle its own defaults and
+    /// simply return None.
     struct GridConfigData
     {
         std::string imagePath;
@@ -48,6 +54,8 @@ namespace Cfg
         Jasnah::Option<CalculationMode> mode;
     };
 
+    /// This is the data we output when asked to preprocess an image
+    /// for the GUI
     struct JSONPreprocConfigVars
     {
         std::string imgPath;
@@ -63,6 +71,7 @@ namespace Cfg
     Jasnah::Option<GridConfigData>
     LoadGridConfigString(const std::string& data);
 
+    /// Writes the Preprocessed data to stdout, returns true on success
     bool
     WriteJSONPreprocFile(const JSONPreprocConfigVars& vars);
 }

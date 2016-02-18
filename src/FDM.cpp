@@ -13,7 +13,7 @@
 #include <algorithm>
 
 // #include <xmmintrin.h>
-// // To enable
+// // To enable floating point exceptions -- crash on nan etc.
 // _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
 // // to disable - will enable if disabled
 // _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() ^ _MM_MASK_INVALID);
@@ -62,11 +62,6 @@ namespace FDM
     FDMParaNoZip(Grid* grid, const std::vector<uint>& coordRange, const StopParams& stop)
     {
         // NOTE(Chris): Multi-threaded variant
-
-        // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-        // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-        //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-        // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
         // NOTE(Chris): We never write to the fixed points, so we don't
         // need to re-set them (as long as they were set properly in the
@@ -153,10 +148,9 @@ namespace FDM
                 }
             }
 
-            // Handle the remaining non-fixed cells of the array that were
-            // not handled by the threaded section - otherwise almost the
-            // same as immediately above, but also reassigns the fixed
-            // points
+            // Handle the remaining non-fixed cells of the array that
+            // were not handled by the threaded section - almost the
+            // same as immediately above
             const auto remBegin = coordRange.begin() + (numThreads) * blockSize;
             const auto remEnd = coordRange.end();
             if (unlikely(i % errorChunk == 0)) // several differences in this branch
@@ -180,7 +174,6 @@ namespace FDM
                 }
 
                 // If we have converged, then break by leaving the function
-                // TODO(Chris): Time logging
                 if (maxErr < stop.zeroTol)
                 {
                     LOG("Performed %u iterations, max error: %e", (unsigned)i, maxErr.load());
@@ -196,12 +189,24 @@ namespace FDM
                 // can find an approximate value for j
                 if (maxErr < 1.0)
                 {
-                    // If this is calculated near the beginning it tends
-                    // to overshoot, go to a quarter to refine the counter
-                    // (we use a modulo anyway so it will still stop at
-                    // the prediction)
-                    errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
+                    // If this is calculated near the beginning it
+                    // tends to overshoot, go to a quarter to refine
+                    // the counter (we use a modulo anyway so it will
+                    // still stop at the prediction). We're now using
+                    // 5%, there was some major overshoot...
+
+                    // NOTE(Chris): Long double should be at least
+                    // 80-bits and should help avoid underflow in
+                    // these calculations (could hopefully be
+                    // 128-bits)
+                    long double err = maxErr;
+                    long double sqI = i * i;
+                    long double tol = stop.zeroTol;
+                    errorChunk = 0.05 * std::sqrt(maxErr * sqI / tol);
+
+                    // errorChunk = 0.05 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
                     LOG("New target index divisor %u", errorChunk);
+                    // LOG("Relative change after %u iterations %f", (unsigned)i, maxErr.load());
                 }
             }
             else
@@ -427,7 +432,12 @@ namespace FDM
                     // to overshoot, go to a quarter to refine the counter
                     // (we use a modulo anyway so it will still stop at
                     // the prediction)
-                    errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
+
+                    long double err = maxErr;
+                    long double sqI = i * i;
+                    long double tol = stop.zeroTol;
+                    errorChunk = 0.05 * std::sqrt(maxErr * sqI / tol);
+
                     LOG("New target index divisor %u", errorChunk);
                 }
             }
@@ -548,7 +558,11 @@ namespace FDM
                     // to overshoot, go to a quarter to refine the counter
                     // (we use a modulo anyway so it will still stop at
                     // the prediction)
-                    errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
+                    long double err = maxErr;
+                    long double sqI = i * i;
+                    long double tol = stop.zeroTol;
+                    errorChunk = 0.05 * std::sqrt(maxErr * sqI / tol);
+
                     LOG("New target index divisor %u", errorChunk);
                 }
             }
@@ -713,7 +727,12 @@ namespace FDM
                     // to overshoot, go to a quarter to refine the counter
                     // (we use a modulo anyway so it will still stop at
                     // the prediction)
-                    errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
+
+                    long double err = maxErr;
+                    long double sqI = i * i;
+                    long double tol = stop.zeroTol;
+                    errorChunk = 0.05 * std::sqrt(maxErr * sqI / tol);
+
                     LOG("New target index divisor %u", errorChunk);
                 }
             }
@@ -907,11 +926,6 @@ namespace FDM
         // wouldn't get more than a 2.5x gain unless I'm missing something
         // algorithmically
 
-        // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-        // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-        //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-        // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
-
         JasUnpack((*grid), horizZip, verticZip, numLines, lineLength, fixedPoints);
 
         // NOTE(Chris): We choose to trade off some memory for computation
@@ -954,6 +968,10 @@ namespace FDM
 
         } break;
         }
+
+        // If we can't get more threads then run the simpler non-parallel version;
+        if (omp_get_max_threads() == 1)
+            parallel = false;
 
         if (!verticZip && !horizZip)
         {

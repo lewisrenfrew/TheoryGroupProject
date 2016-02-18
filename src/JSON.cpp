@@ -47,6 +47,7 @@ static
 Jasnah::Option<std::unordered_map<u32, Constraint> >
 ParseColorMap(const GenericValue<UTF8<> >& array)
 {
+    // NOTE(Chris): Parse the colormap by looping over each node in the array
     const uint size = array.Size();
     if (size == 0)
     {
@@ -115,16 +116,6 @@ ParseColorMap(const GenericValue<UTF8<> >& array)
         {
             innerResult.first = ConstraintType::LERP_VERTIC;
         } break;
-
-        // case StringHash("HorizontalZip"):
-        // {
-        //     innerResult.first = ConstraintType::ZIP_X;
-        // } break;
-
-        // case StringHash("VerticalZip"):
-        // {
-        //     innerResult.first = ConstraintType::ZIP_Y;
-        // } break;
 
         default:
         {
@@ -211,6 +202,8 @@ static
 Jasnah::Option<std::unordered_map<u32, Constraint> >
 ParseColorMapFromFile(const char* path)
 {
+    // NOTE(Chris): The colormap could be in a different file, and has
+    // quite a few requirements so it's best to separate its parsing
     auto file = ReadFileAndNullTerminate(path);
     if (!file)
         return Jasnah::None;
@@ -274,15 +267,11 @@ ParseConfig(std::vector<char>* buf, const char* path)
         return Jasnah::None;
     }
 
-    // NOTE(Chris): We will just default to 100 instead
-    // if (!doc.HasMember("PixelsPerMeter"))
-    // {
-    //     LOG("JSON Error: No PixelsPerMeter member");
-    //     return Jasnah::None;
-    // }
-
     Cfg::GridConfigData result;
 
+    // NOTE(Chris): Loop over every node in the document-object and
+    // parse it based on its name. We use constexpr hashes to neatly
+    // compare the strings
     for (auto iter = doc.MemberBegin();
          iter != doc.MemberEnd();
          ++iter)
@@ -463,7 +452,6 @@ ParseConfig(std::vector<char>* buf, const char* path)
 
 namespace Cfg
 {
-    // TODO(Chris): Add a mode switch to vary the reqd args
     Jasnah::Option<GridConfigData>
     LoadGridConfigFile(const char* path)
     {
@@ -525,18 +513,6 @@ namespace Cfg
 
         writer.EndObject();
 
-        // std::string fileName(tmpnam(nullptr));
-        // FILE* tempFile = fopen(fileName.c_str(), "w");
-        // if (!tempFile)
-        // {
-        //     fclose(tempFile);
-        //     return false;
-        // }
-
-        // fputs(sb.GetString(), tempFile);
-        // fputs(fileName.c_str(), stderr);
-
-        // fclose(tempFile);
         puts("**JSON_START**");
         puts(sb.GetString());
         puts("**EOF**");

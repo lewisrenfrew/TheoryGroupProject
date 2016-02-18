@@ -50,7 +50,7 @@ namespace GaussSeidel
     /// points will need to be fixed and zipping is not enabled). It
     /// is recommended to use the disptach function to call this
     /// function after verifying its appropriateness
-    
+
     /// Multi-threaded implementation of the finite difference method
     /// that takes into account that some of the points on the outer
     /// rows may need to be zipped. The dispatch function can determine this
@@ -67,37 +67,37 @@ namespace GaussSeidel
     // the true update of phi is a  combination of the intermediate update and the
     // old phi value according to:
     // PhiNew(x,y) =  1/4 * (Phi(x+1,y) + phiIntermediate(x-1,y) + phi(x,y+1) + phiIntermediate(x,y-1))
-    // 
+    //
     // see demonstrations.wolfram.com/SolvingThe2DPoissonPDEByEightDifferentMethods/
 
     static
     void
     GaussSeidelParaNoZip(Grid* grid, const std::vector<uint>& coordRange, const StopParams& stop)
     {
-      
 
-               
-       
-       
 
-       
+
+
+
+
+
         // NOTE(Chris): Multi-threaded variant
 
-        
-       
 
-        
+
+
+
 
         // NOTE(Chris): We never write to the fixed points, so we don't
         // need to re-set them (as long as they were set properly in the
         // incoming grid using AddFixedPoint)
 
         JasUnpack((*grid), voltages, numLines, lineLength);
-         
+
         std::cout<< "GaussSeidelParaNoZip is being used." <<std::endl;
-        
-       
-        
+
+
+
 
         // Create the previous voltage array from the current array
         decltype(grid->voltages) prevVoltages(voltages);
@@ -120,9 +120,9 @@ namespace GaussSeidel
         // Atomic value for concurrent multi-threaded access
         std::atomic<f64> maxErr(0.0);
 
-       
-         
-        
+
+
+
         // Main loop - start with 1 so as not to take slow path on first iter
         for (u64 i = 1; i <= stop.maxIter; ++i)
         {
@@ -153,7 +153,7 @@ namespace GaussSeidel
                     // Loop over the non-fixed points in the threaded region
                     for (auto coord = start; coord < end; ++coord)
                     {
-                        
+
                         // Apply finite difference method and calculate error
                         // first our intermediate stage, uses the previous voltages matrix
                         const f64 newVal1 =  0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
@@ -161,11 +161,11 @@ namespace GaussSeidel
                         voltages[*coord] = newVal1;
                         //now our true update
                         const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
+
+
                         //assign these values to the voltages matrix
                         voltages[*coord] = newVal2;
-                       
+
                         const f64 absErr = std::abs((pVoltage[*coord] - newVal2)/newVal2);
 
                         if (absErr > threadMaxErr)
@@ -188,14 +188,14 @@ namespace GaussSeidel
                          const f64 newVal1 =  0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                         voltages[*coord] = newVal1;
                        const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
-                        
+
+
+
                         voltages[*coord] = newVal2;
-                       
+
                         const f64 absErr = std::abs((pVoltage[*coord] - newVal2)/newVal2);
 
-                        
+
                     }
                 }
             }
@@ -216,14 +216,14 @@ namespace GaussSeidel
                       const f64 newVal1 =  0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                         voltages[*coord] = newVal1;
                        const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
-                        
+
+
+
                         voltages[*coord] = newVal2;
-                       
+
                         const f64 absErr = std::abs((pVoltage[*coord] - newVal2)/newVal2);
 
-                   
+
 
                     if (absErr > localMaxErr)
                         localMaxErr = absErr;
@@ -263,17 +263,17 @@ namespace GaussSeidel
             {
                 for (auto coord = remBegin; coord < remEnd; ++coord)
                 {
-                   
+
                    // Apply finite difference method only
                     // first our intermediate stage
                       const f64 newVal1 =  0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
                         voltages[*coord] = newVal1;
                        const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
-                        
+
+
+
                         voltages[*coord] = newVal2;
-                       
+
                         const f64 absErr = std::abs((pVoltage[*coord] - newVal2)/newVal2);
 
                 }
@@ -286,19 +286,19 @@ namespace GaussSeidel
     void
     GaussSeidelSingleNoZip(Grid* grid, const std::vector<uint>& coordRange, const StopParams& stop)
     {
-        
 
-        
-        
 
-       
+
+
+
+
 
         JasUnpack((*grid), voltages, numLines, lineLength);
 
 
-       
+
         std::cout<< "FDMsorSingleNoZip is being used." <<std::endl;
-        
+
 
         // Create the previous voltage array from the current array
         decltype(grid->voltages) prevVoltages(voltages);
@@ -308,7 +308,7 @@ namespace GaussSeidel
 
         f64 maxErr = 0.0;
 
-        
+
 
         // Main loop - start from 1 so as not to calculate error on first iteration
         for (u64 i = 1; i <= stop.maxIter; ++i)
@@ -340,13 +340,13 @@ namespace GaussSeidel
                         voltages[*coord] = newVal1;
                         //now our true update
                         const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
+
+
                         //assign these values to the voltages matrix
                         voltages[*coord] = newVal2;
-                   
 
-                    
+
+
                     const f64 absErr = std::abs((pVoltage[*coord] - newVal2)/newVal2);
 
                     if (absErr > threadMaxErr)
@@ -398,17 +398,17 @@ namespace GaussSeidel
                         voltages[*coord] = newVal1;
                         //now our true update
                         const f64 newVal2 =  0.25 * (voltages[(*coord) - 1] + pVoltage[(*coord)+1] + voltages[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                       
-                         
+
+
                         //assign these values to the voltages matrix
                         voltages[*coord] = newVal2;
-                    
+
                 }
             }
         }
         LOG("Overran max iteration counter (%u), max error: %f", (unsigned)stop.maxIter, maxErr);
     }
-    
+
 
 
 /// Types of possible problems with Zip definition
@@ -550,8 +550,8 @@ namespace GaussSeidel
     /// to 1 of 4 worked functions, depending on whether it has zips,
     /// and whether we are running parallel code or not
     void
-    SolveGridLaplacianZeroGaussSeidel(Grid* grid, const f64 zeroTol,
-                              const u64 maxIter, bool parallel)
+    GaussSeidelSolver(Grid* grid, const f64 zeroTol,
+                      const u64 maxIter, bool parallel)
     {
 
         // NOTE(Chris): This function dispatches the calculation to

@@ -14,6 +14,7 @@
 class JsonOutputStream;
 class AnalyticsDaemon;
 
+/// Globally available logging objects -- some accesible via singleton
 namespace Log
 {
     extern Lethani::Logfile log;
@@ -21,6 +22,7 @@ namespace Log
     AnalyticsDaemon& GetAnalytics();
 }
 
+/// Header for time structure -- impl in main
 struct TimedFunction
 {
 public:
@@ -33,16 +35,12 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> end_;
 };
 
+/// Macros for timing functions, insert TIME_FUNCTION() at the start
+/// of the function you want to time.
 #define TIME_FUNCTION_IMPL(s, l) TimedFunction t_##l(s)
 #define TIME_FUNCTION() TIME_FUNCTION_IMPL(__FUNCTION__, __LINE__)
 
-namespace Version
-{
-    constexpr const char* ProgramName = "Gridle";
-    constexpr const char* DefaultLog = "Gridle.log";
-    constexpr const char* VersionNumber = "0.0.1";
-}
-
+/// Certain hard-coded useful colours, primarily used in development
 namespace Color
 {
     // NOTE(Chris): Modern computers are almost all little-endian i.e.
@@ -55,5 +53,14 @@ namespace Color
     constexpr const u32 Black = 0xFF000000;
 }
 
+/// Program Info
+namespace Version
+{
+    constexpr const char* ProgramName = "Gridle";
+    constexpr const char* DefaultLog = "Gridle.log";
+    constexpr const char* VersionNumber = "0.0.1";
+}
+
+/// Necessary for logging timed functions
 #include "OutputStream.hpp"
 #endif

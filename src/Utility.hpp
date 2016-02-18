@@ -23,6 +23,7 @@ extern "C" inline void omp_set_num_threads(int num) { (void)num; }
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
+/// Checks if a uint is a power of 2
 // http://www.graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 inline
 bool
@@ -31,13 +32,17 @@ IsPow2(uint val)
     return val && !(val & (val - 1));
 }
 
+/// Template for tidier square function without truncation. Constexpr
+/// so will be inlined
 template <typename T>
 inline constexpr
 T Square(T val) { return val * val; }
 
+/// Alias to shorten the number of times remove_reference<T>::type is written
 template <typename T>
 using RemRefT = typename std::remove_reference<T>::type;
 
+/// C++11 "Forgot" a make-unique, so we provide the basic implementation here
 template <typename T, typename... Args>
 inline std::unique_ptr<T>
 make_unique(Args&&... args)
@@ -100,7 +105,6 @@ LerpNPointsBetweenVoltages(const f64 v1, const f64 v2, const uint numPoints)
 }
 
 typedef u32 HashedName;
-
 
 namespace Impl
 {

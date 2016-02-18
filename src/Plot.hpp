@@ -20,8 +20,8 @@ namespace Cfg
 
 namespace Plot
 {
-    // NOTE(Chris): Look at using gnuplot special filenames to improve
-    // this mess -- generate plots directly
+    /// Names used for graph output depending on mode. This is the
+    /// CANONICAL list of HTML output files from gnuplot
     namespace SingleSimFiles
     {
         static constexpr const char* gridPlot = "Grid.html";
@@ -51,6 +51,8 @@ namespace Plot
         static constexpr const char* differencePlot = "Diff.html";
     };
 
+    /// Used to pass the possible output from simulation to plotting
+    /// routines, not all graphs are required in all modes
     using Jasnah::Option;
     struct PlottableGrids
     {
@@ -59,47 +61,12 @@ namespace Plot
         Option<Grid> grid2;
         Option<GradientGrid> vector2;
         Option<Grid> difference;
-        // Option<GradientGrid> differenceVector;
     };
 
-    enum class LogOutputPaths
-    {
-        None,
-        StdOut,
-        JsonStdOut
-    };
-
+    /// Uses gnuplot to produce the plots based on the on the provided plots and mode
     bool
     WritePlotFiles(const PlottableGrids& grids,
-                   const Cfg::OperationMode mode,
-                   const LogOutputPaths log = LogOutputPaths::None);
+                   const Cfg::OperationMode mode);
 
-    // /// Writes the gnuplot data file, to be used with WriteGnuplotFile
-    // /// Returns true on successful write
-    // bool
-    // WriteGridForGnuplot(const Grid& grid, const char* filename = "Plot/Grid.dat");
-
-    // /// Use this to auto-scale the number of vectors created. Writes
-    // /// the files for gnuplot to plot the vector field and also its
-    // /// data file. Returns true on success
-    // bool
-    // WriteGradientFiles(const GradientGrid& grid,
-    //                    const uint maxVerPerSide = 50,
-    //                    const char* gridDataFile = "Plot/GradientGrid.dat",
-    //                    const char* plotFile = "Plot/PlotGradient.gpi");
-
-    // /// Prints a script config file for gnuplot, the makefile can run
-    // /// this. Returns true on successful write
-    // bool
-    // WriteGnuplotColormapFile(const Grid& grid,
-    //                          const char* gridDataFile = "Plot/Grid.dat",
-    //                          const char* filename = "Plot/PlotFinal.gpi");
-
-    // // Prints a script config file for gnuplot to plot the contour map.
-    // // Returns true on succesful write
-    // bool
-    // WriteGnuplotContourFile(const Grid& grid,
-    //                         const char* gridDataFile = "Plot/Grid.dat",
-    //                         const char* filename = "Plot/PlotContour.gpi");
 }
 #endif

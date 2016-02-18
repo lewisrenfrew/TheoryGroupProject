@@ -58,7 +58,7 @@ namespace Lethani
     {
 
     public:
-        /// Arg-less constructor, logs to adem.log
+        /// Arg-less constructor, logs to default file
         Logfile();
         /// Construct with specified filename
         Logfile(const char* filename);
