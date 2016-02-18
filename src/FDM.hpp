@@ -20,7 +20,7 @@ namespace FDM
     /// change over one iteration is less zeroTol or maxIter iterations
     /// have taken place.
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
+    FDMSolver(Grid* grid, const f64 zeroTol,
                            const u64 maxIter, bool parallel = true);
 }
 #endif

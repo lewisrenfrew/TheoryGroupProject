@@ -890,7 +890,7 @@ namespace FDM
     /// to 1 of 4 worked functions, depending on whether it has zips,
     /// and whether we are running parallel code or not
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
+    FDMSolver(Grid* grid, const f64 zeroTol,
                            const u64 maxIter, bool parallel)
     {
 

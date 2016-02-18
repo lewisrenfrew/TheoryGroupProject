@@ -546,7 +546,7 @@ namespace SOR
     /// to 1 of 4 worked functions, depending on whether it has zips,
     /// and whether we are running parallel code or not
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
+    SORSolver(Grid* grid, const f64 zeroTol,
                               const u64 maxIter, bool parallel)
     {
 
@@ -567,6 +567,7 @@ namespace SOR
         // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
         //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
         // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
+        TIME_FUNCTION();
 
         JasUnpack((*grid), horizZip, verticZip, numLines, lineLength, fixedPoints);
 

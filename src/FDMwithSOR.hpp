@@ -11,7 +11,7 @@ namespace SOR
 {
     // an ammended version of SolveGridLaplacianZero that uses succesive over relaxation
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
-                           const u64 maxIter, bool parallel = false);
+    SORSolver(Grid* grid, const f64 zeroTol,
+              const u64 maxIter, bool parallel = false);
 }
 #endif

@@ -18,7 +18,7 @@ namespace RedBlack
 {
     /// Method that behaves very similarly to FDM, just using the Red-Black iterative method instead
     void
-    SolveGridLaplacianZero(Grid* grid, const f64 zeroTol,
-                           const u64 maxIter, bool parallel = true);
+    RedBlackSolver(Grid* grid, const f64 zeroTol,
+                   const u64 maxIter, bool parallel = true);
 }
 #endif

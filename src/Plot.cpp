@@ -664,6 +664,7 @@ static
 bool
 PlotCompareTwo(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths log)
 {
+    TIME_FUNCTION();
     // expects all plottable grids
     if (!grids.singleSimGrid
         || !grids.singleSimVector

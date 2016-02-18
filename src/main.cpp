@@ -164,7 +164,7 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
     if (!mode)
     {
         LOG("Using FDM");
-        FDM::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+        FDM::FDMSolver(grid, zeroTol, maxIter);
         return;
     }
 
@@ -172,7 +172,7 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
     {
     case Cfg::CalculationMode::FiniteDiff:
     {
-        FDM::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+        FDM::FDMSolver(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::MatrixInversion:
@@ -183,12 +183,12 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
     case Cfg::CalculationMode::SOR:
     {
         // LOG("Not yet implemented");
-        SOR::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+        SOR::SORSolver(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::RedBlack:
     {
-        RedBlack::SolveGridLaplacianZero(grid, zeroTol, maxIter);
+        RedBlack::RedBlackSolver(grid, zeroTol, maxIter);
     } break;
     }
 }
