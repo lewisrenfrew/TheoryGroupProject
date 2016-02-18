@@ -38,8 +38,9 @@ This is the structure of A (for a very small grid (5x5) here the -4's and 1's ca
  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0
  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1
 
- 10  10  10  10  10 
- 10   0    0    0   10 
- 10   0    0    0   10 
- 10   0    0    0   10 
- 10  10  10  10  10 
+this is the grid fed to the program and this yeilds the above A
+ 10 10  10  10  10 
+ 10  0   0   0  10 
+ 10  0   0   0  10 
+ 10  0   0   0  10 
+ 10 10  10  10  10 
