@@ -7,7 +7,7 @@
 namespace AGF
 {
     std::pair<Grid,GradientGrid> AnalyticalGridFill0 (const uint lineLength, const uint numLines, const f64 voltage,
-                              const f64 r2, const f64 r1, const f64 cellsPerMeter)
+                                                      const f64 r2, const f64 r1, const f64 cellsPerMeter)
     {
         // This function takes the above arguments and returns a grid with the analytical solution for problem 0
         // Currently radii are user specified and not obtained directly from the image that depicts the situation
@@ -20,9 +20,9 @@ namespace AGF
         const f64 cx = (f64)(lineLength-1) / (2.0 * cellsPerMeter);
         const f64 cy = (f64)(numLines-1) / (2.0 * cellsPerMeter);
 
-	GradientGrid efield;
-	efield.lineLength = lineLength;
-	efield.numLines = numLines;
+        GradientGrid efield;
+        efield.lineLength = lineLength;
+        efield.numLines = numLines;
 
 
 
@@ -39,7 +39,7 @@ namespace AGF
                 if (r < r1)
                 {
                     // sets potential to 0 at that point
-                    grid.voltages.push_back(00.0);
+                    grid.voltages.push_back(0.0);
                     //set gradients in gradientgrid to zero
                     efield.gradients.push_back(V2d(0.0,0.0));
                 }
@@ -47,9 +47,9 @@ namespace AGF
                 else if (r > r2)
                 {
                     // sets potential to 10 for such points - matches our image
-                    grid.voltages.push_back(10.0);
+                    grid.voltages.push_back(voltage);
                     efield.gradients.push_back(V2d(0.0,0.0));
-                //set gradients int gradientgrid to zero
+                    //set gradients int gradientgrid to zero
                 }
                 else
                 {
@@ -59,7 +59,7 @@ namespace AGF
                     efield.gradients.push_back(V2d(
                                                    -(1/log(r2/r1))*voltage*(x-cx)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy))),
                                                    -(1/log(r2/r1))*voltage*(y-cy)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy)))));
-		}
+                }
 
 
             }
@@ -70,7 +70,7 @@ namespace AGF
 
 
     std::pair<Grid,GradientGrid> AnalyticalGridFill1 (const uint lineLength, const uint numLines, const f64 voltage,
-                              const double r2, const double r1, const f64 cellsPerMeter)
+                                                      const double r2, const double r1, const f64 cellsPerMeter)
     {
         // This function fills a grid with the analytical solution for problem 1
         // Recall that the solution used the idea of solving in polar coords  between the circular ground radius r1 and the circle r2 that had diameter = plate spacing
@@ -86,9 +86,9 @@ namespace AGF
         const f64 cy = (f64)(numLines-1) / 2.0 / cellsPerMeter;
 
 
-	GradientGrid efield;
-	efield.lineLength = lineLength;
-	efield.numLines = numLines;
+        GradientGrid efield;
+        efield.lineLength = lineLength;
+        efield.numLines = numLines;
 
         for (uint j = 0; j < numLines; j++)
         {
