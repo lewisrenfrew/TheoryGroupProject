@@ -628,7 +628,7 @@ PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths lo
     if (!grids.singleSimGrid
         || !grids.singleSimVector
         || !grids.grid2
-        // || !grids.vector2
+        || !grids.vector2
         || !grids.difference)
         return false;
     // NOTE(Chris): These assume that everything works
@@ -640,7 +640,7 @@ PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths lo
     gpStr += PlotVectorFieldString(*grids.singleSimVector, vectorPlot, "Electric Field (V/m)");
     gpStr += PlotColorMapString(*grids.grid2, gridAnalyticPlot, "Stable Voltage - Analytic - (V)");
     gpStr += PlotContourMapString(*grids.grid2, contourAnalyticPlot, "Stable Voltage - Analytic - (V)");
-    // PlotVectorField(*grids.vector2, vectorPlot, "Electric Field (V/m)");
+    gpStr += PlotVectorFieldString(*grids.vector2, vectorAnalyticPlot, "Electric Field (V/m)");
     gpStr += PlotColorMapString(*grids.difference, differencePlot, "Difference (V)");
 
     GnuplotString(gpStr);
@@ -651,6 +651,7 @@ PlotCompareProb(const Plot::PlottableGrids& grids, const Plot::LogOutputPaths lo
 
     Log::GetAnalytics().ReportGraphOutput(gridAnalyticPlot, "Voltage Plot (Analytic)");
     Log::GetAnalytics().ReportGraphOutput(contourAnalyticPlot, "Voltage Contour Plot (Analytic)");
+    Log::GetAnalytics().ReportGraphOutput(vectorAnalyticPlot, "E-field Plot (Analytic)");
 
     Log::GetAnalytics().ReportGraphOutput(differencePlot, "Voltage Difference Between Solutions");
 

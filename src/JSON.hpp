@@ -21,7 +21,7 @@ namespace Cfg
         FiniteDiff,
         MatrixInversion,
         SOR,
-        AMR
+        RedBlack
     };
 
     enum class OperationMode

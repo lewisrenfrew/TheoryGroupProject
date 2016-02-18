@@ -7,6 +7,7 @@
 #include "GlobalDefines.hpp"
 #include "FDM.hpp"
 #include "FDMwithSOR.hpp"
+#include "RedBlack.hpp"
 #include "MatrixInversion.hpp"
 #include "AnalyticalGridFunctions.hpp"
 #include "Compare.hpp"
@@ -185,9 +186,9 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
         SOR::SolveGridLaplacianZero(grid, zeroTol, maxIter);
     } break;
 
-    case Cfg::CalculationMode::AMR:
+    case Cfg::CalculationMode::RedBlack:
     {
-        LOG("Not yet implemented");
+        RedBlack::SolveGridLaplacianZero(grid, zeroTol, maxIter);
     } break;
     }
 }
@@ -479,6 +480,7 @@ namespace Log
 #ifndef CATCH_CONFIG_MAIN
 int main(int argc, const char* argv[])
 {
+    TIME_FUNCTION();
     auto args = ParseArguments(argc, argv);
     if (args.guiMode)
     {

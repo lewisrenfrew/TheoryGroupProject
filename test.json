@@ -1,12 +1,13 @@
 {
-    "ImagePath" : "prob0HR.png",
+    "ImagePath" : "prob1HR.png",
     "ColorMapPath" : "cmap.json",
-    "MaxRelErr" : 0.0001,
+    "MaxRelErr" : 0.00001,
     "ScaleFactor" : 1,
     "MaxIterations" : 10000000,
     "PixelsPerMeter" : 100,
     "HorizontalZip" : false,
     "VerticalZip" : false,
     "AnalyticInnerRadius" : 50,
-    "AnalyticOuterRadius" : 600
+    "AnalyticOuterRadius" : 600,
+    "CalculationMode" : "RedBlack"
 }

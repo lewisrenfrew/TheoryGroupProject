@@ -441,9 +441,9 @@ ParseConfig(std::vector<char>* buf, const char* path)
                 result.mode = Cfg::CalculationMode::SOR;
             } break;
 
-            case StringHash("AMR"):
+            case StringHash("RedBlack"):
             {
-                result.mode = Cfg::CalculationMode::AMR;
+                result.mode = Cfg::CalculationMode::RedBlack;
             } break;
 
             default:
