@@ -1,0 +1,46 @@
+The Matrix inversion method uses the 5 point star system just like the final difference method. It however finds the solution in a much different way; through a system of linear equations. For this problem an image is fed to a grid function that interprets the different colours as set volatges and put all thos in a grid like stricture. This is the structure that this matrix inversion is working at. 
+
+Steps:
+First one create three matrices all filled with zeroes; one square matrix,A, with its sides the size of the grid's columns times its rows and two column matries (V,known) with the size of the grid size.
+Then create a nested loop with the outside one running y from 0 to the size of the column of A and the inner running x from 0 to the size of one grid length.
+Each iteration checks if the value is known or not. If it is add that value to the current place in the known vector and a 1 to the A matrix at the position (y,y). If the value at the current place is not known add a -4 to the current place (y,y), and add a 1 to one step left and right of the current place and also a 1 in the position one up and one down of the current place. IMPORTANT is to add every point to the same row. When done with either the known or unknown add one to y, because next iteration must represent a new linear equation and not overwrite or add to the one already made. In the outer loop an integer value k should be increased by 1; k is a place holder to know what row in the grid the calculation is at.
+Once the system of equations are made one can inverse the matrix and multiply it with the known matrix to find the values of the matrix V with all the values between the known values.
+Finally fill all the gridpoints with the corresponding V value using a for loop.
+
+This method works very well; it can find a very accurate soulution with a very small image, it never breaks and it can be modified to visually show what is going on (when working on small images).
+
+It has a few drawbacks: for one it can use up large amounts of memmory due to the huge matrix that is needed when working with a large image. The matrix follows the formula N^4 where N is the number of pixels in the grid. Another drawback is that the matrix must be invertable so all the systems used must form a square matrix. It also can take a long time to run because a matrix that large needs a lot of calculations done to find its inverse. 
+
+This is the structure of A (for a very small grid (5x5) here the -4's and 1's can be seen clearly
+ 1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  1 -4  1  0  0  0  1  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0
+ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1
+
+this is the grid fed to the program and this yeilds the above A
+ 10 10  10  10  10 
+ 10  0   0   0  10 
+ 10  0   0   0  10 
+ 10  0   0   0  10 
+ 10 10  10  10  10 
