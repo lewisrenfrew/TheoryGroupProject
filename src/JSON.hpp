@@ -20,8 +20,8 @@ namespace Cfg
     {
         FiniteDiff,
         MatrixInversion,
-        SOR,
         RedBlack
+        GaussSeidel,
     };
 
     enum class OperationMode

@@ -8,6 +8,7 @@
 #include "FDM.hpp"
 #include "FDMwithSOR.hpp"
 #include "RedBlack.hpp"
+#include "GaussSeidel.hpp"
 #include "MatrixInversion.hpp"
 #include "AnalyticalGridFunctions.hpp"
 #include "Compare.hpp"
@@ -180,10 +181,9 @@ DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTo
         MatrixInversion::MatrixInversionMethod(grid, zeroTol, maxIter);
     } break;
 
-    case Cfg::CalculationMode::SOR:
+    case Cfg::CalculationMode::GaussSeidel:
     {
-        // LOG("Not yet implemented");
-        SOR::SORSolver(grid, zeroTol, maxIter);
+        GaussSeidel::SolveGridLaplacianZeroGaussSeidel(grid, zeroTol, maxIter);
     } break;
 
     case Cfg::CalculationMode::RedBlack:

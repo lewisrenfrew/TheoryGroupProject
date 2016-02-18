@@ -1,5 +1,5 @@
 {
-    "ImagePath" : "prob0MR.png",
+    "ImagePath" : "prob1.png",
     "ColorMapPath" : "cmap.json",
     "MaxRelErr" :0.00000001,
     "ScaleFactor" : 1,
@@ -8,5 +8,6 @@
     "HorizontalZip" : false,
     "VerticalZip" : false,
     "AnalyticInnerRadius" : 6,
-    "AnalyticOuterRadius" : 96 
+    "AnalyticOuterRadius" : 96, 
+    "CalculationMode" : "GS"
 }
