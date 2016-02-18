@@ -436,9 +436,9 @@ ParseConfig(std::vector<char>* buf, const char* path)
                 result.mode = Cfg::CalculationMode::MatrixInversion;
             } break;
 
-            case StringHash("SOR"):
+            case StringHash("GS"):
             {
-                result.mode = Cfg::CalculationMode::SOR;
+                result.mode = Cfg::CalculationMode::GaussSeidel;
             } break;
 
             case StringHash("RedBlack"):

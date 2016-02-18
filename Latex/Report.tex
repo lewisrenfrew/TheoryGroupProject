@@ -10,12 +10,13 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{multicol}
+\usepackage{float}
 
 \usepackage{pdfpages}
 
 
 
-\documentclass{article}
+
 \usepackage{listings}
 \usepackage{xcolor}
 \lstset { %
@@ -77,10 +78,10 @@ Substituting (3) into (2) obtains Laplace's equation for electric potential:
 i.e the equation that this project is concerned with solving.
 \section{Analytical Solutions For Two Situations} 
 In order for it to be possible to compare the eventual numerical method utilised by the software to an analytical method of solving Laplace's equation for electric potential two given situations were considered and the form of potential in each case was obtained by solving the equation analytically and implementing appropriate boundary conditions. 
-\newline The first and simplest case consists of an inner cylinder at ground and an outer concentric cylinder at a potential of +\textit{V}. (Figure 1) \\
+\newline The first and simplest case consists of an inner cylinder at ground and an outer concentric cylinder at a potential of +\textit{V}. See Figure~\ref{fig:0} in Appendix 2. \\
 \\
 The First method considered to determine the analytical solution for this situation is as follows: We first rewrite Laplace's Equation in polar form and then use a substitution to reduce the order of the differentials, solve in two steps as two first order differential equations and then apply appropriate boundary conditions (See Appendix). \\
-A Conformal mapping approach was also considered to verify the analytical solution. The general idea is to reduce the potential to a function of a single variable by mapping to the complex plain ( also detailed in the Appendix).  \\
+A Conformal mapping approach was also considered to verify the analytical solution. The general idea is to reduce the potential to a function of a single variable by mapping to the complex plane ( also detailed in the Appendix 1).  \\
 \\
 Both methods agree: 
 
@@ -90,7 +91,7 @@ Both methods agree:
 \end{equation}
 where R_i\) and R_o\) are the radii of the inner and outer cylinder respectively and \textit{r} is the distance from the origin, in this case the centre of the concentric cylinders. \\
 \\
-The second case (Figure 2) is more complicated in that there is a \theta\) dependence and as such Laplace's equation remains one containing partial differentials. To arrive at a solution we postulate that the potential behaves as if it were solely due to parallel plates in the region outside a circle with a diameter equal to the distance between the plates. We also suppose that the solution along the circumference of this circle takes a cosine form. With these two ideas we can solve for the region inside the circle in polar coordinates using our cosine form as a boundary condition and for the region outside the circle consider only a parallel plates situation for which arriving at a solution is trivial i.e: 
+The second case (see figure~\ref{fig:1} in Appendix 2) is more complicated in that there is a \theta\) dependence and as such Laplace's equation remains one containing partial differentials. To arrive at a solution we postulate that the potential behaves as if it were solely due to parallel plates in the region outside a circle with a diameter equal to the distance between the plates. We also suppose that the solution along the circumference of this circle takes a cosine form. With these two ideas we can solve for the region inside the circle in polar coordinates using our cosine form as a boundary condition and for the region outside the circle consider only a parallel plates situation for which arriving at a solution is trivial i.e: 
 \begin{equation}
 \phi(r,\theta)=(r-R_1)-\frac{V}{R_2-R_1}\cos(\theta)
 \label{}
@@ -102,42 +103,11 @@ inside the circle, i.e \textit{r} < R_2\) and
 \end{equation}
 outside the circle, i.e \textit{x} = \textit{r}\cos(\theta)\) > \textit{R}_2\) (see Appendix). By substituting \textit{r}=\textit{R}_2\) and \textit{x}=\textit{R}_2\cos\theta\) into (7) and (8) respectively it can be seen that the two solutions agree at the boundary, i.e along the circumference of the circle that we had set up. 
 
-\begin{figure}
-\centering
-\begin{minipage}{.5\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{table.png}
-  \captionof{figure}{Table describing the colour coding of the diagrams}
-  \label{fig:test1}
-\end{minipage}%
-\begin{minipage}{.5\textwidth}
-  \centering
-  \includegraphics[width=.6\linewidth]{../prob0HR.png}
-  \captionof{figure}{The set up for Problem 0}
-  \label{fig:test2}
-\end{minipage}
-\end{figure}
-
-\begin{figure}
-\centering
-\begin{minipage}{.5\textwidth}
-  \centering
-  \includegraphics[width=.5\linewidth]{../prob1HR.png}
-  \captionof{figure}{The set up for problem 1}
-  \label{fig:test1}
-\end{minipage}%
-\begin{minipage}{.5\textwidth}
-  \centering
-  \includegraphics[width=.6\linewidth]{../prob24.png}
-  \captionof{figure}{The set up for the edge coupled stripline}
-  \label{fig:test2}
-\end{minipage}
-\end{figure}
 
 
 
 \section{Methods 1: Solving Numerically For a General Case}
- The numerical solver functions, called in the main program, solve for a grid of points that is filled with user defined boundary conditions. To create the grid a user creates an image with colours corresponding to voltages, grounds and other boundary conditions (see Figure 1). Figures 2, 3 and 4 are examples of such input images. The image is processed by a grid function such that it can be solved for using the numerical methods that follow. A solution grid of potential is returned. \\
+ The numerical solver functions, called in the main program, solve for a grid of points that is filled with user defined boundary conditions. To create the grid a user creates an image with colours corresponding to voltages, grounds and other boundary conditions. Appendix 2 displays sample images and a colour-potential key. The image is processed by a grid function such that it can be solved for using the numerical methods that follow. A solution grid of potential is returned. \\
 (TODO: REFER TO PESUDOCODE OR ACTUAL CODE FILE grid.cpp) \\ 
 \\
 A separate function calculates the E-field grid, i.e the gradient of the potential field, according to~(\ref{eq:efield}) using a symmetric derivative method. The difference in values across the adjacent cells per unit cell are used as an approximation for the derivative for each cell. The derivative is calculated in this way for all points except outer points using a for loop.\\
@@ -177,11 +147,20 @@ provided boundary conditions are provided. \\
 This method is implemented in the program by looping over all of the points in the input grid that provides such boundary conditions and thus creating a new solution grid for potential according to~(\ref{eq:fdm}). 
 
 \subsection{Improving The Finite Difference Method: \textit{SOR}}
--involves using our current result at each point~(\ref{eq:laplace}) as an intermediate stage \\
--and then calculating the actual new value according to \\
+Successive over relaxation is a means to accelerate the convergence of a finite difference method via the introduction of a relaxation parameter, \omega\). 
+What was previously the value for the potential at a point in the grid, i.e equation~(\ref{eq:laplace}), is used as an intermediate stage and our actual true updated value for potential is given by a weighted combination of the old value of potential and the intermediate stage according to: \\
+
 \begin{equation}
 \phi_{x,y}^{New} = (1-\omega)\phi_{x,y}+\omega\phi_{x,y}^{Intermediate}
 \label{eq:sor}
+\end{equation}
+
+\omega\) can be calculated for a simple rectangular NxM grid as: 
+
+\begin{equation}
+
+\label{eq:q}
+TODO: W CALCULATION
 \end{equation}
 
 
@@ -266,6 +245,44 @@ Using the fact that potential is 0 at R_i\) and V at R_o\) as boundary condition
 \includepdf{A32.pdf}
 \includepdf{CM1.pdf}
 \includepdf{CM2.pdf}
+
+
+\section{Appendix 2 - Sample Input Images and Key}
+\newline
+\newline
+\newline
+\begin{figure}[H]
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{table.png}
+  \captionof{figure}{Table describing the colour coding of the diagrams}
+  \label{fig:key}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.6\linewidth]{../prob0HR.png}
+  \captionof{figure}{The set up for Problem 0}
+  \label{fig:0}
+\end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.5\linewidth]{../prob1HR.png}
+  \captionof{figure}{The set up for problem 1}
+  \label{fig:1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.6\linewidth]{../prob24.png}
+  \captionof{figure}{The set up for the edge coupled stripline}
+  \label{fig:24}
+\end{minipage}
+\end{figure}
+
 
 
 
