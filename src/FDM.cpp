@@ -893,7 +893,7 @@ namespace FDM
     FDMSolver(Grid* grid, const f64 zeroTol,
                            const u64 maxIter, bool parallel)
     {
-
+        TIME_FUNCTION();
         // NOTE(Chris): This function dispatches the calculation to
         // the most appropriate function (zips or not, parallel or
         // not), after having preprocessed the grid to check its

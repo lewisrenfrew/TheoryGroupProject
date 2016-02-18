@@ -23,7 +23,7 @@ namespace AGF
 	GradientGrid efield;
 	efield.lineLength = lineLength;
 	efield.numLines = numLines;
-	
+
 
 
 
@@ -40,23 +40,25 @@ namespace AGF
                 {
                     // sets potential to 0 at that point
                     grid.voltages.push_back(00.0);
-		    //set gradients in gradientgrid to zero
-		    efield.gradients.push_back(V2d(0.0,0.0));
+                    //set gradients in gradientgrid to zero
+                    efield.gradients.push_back(V2d(0.0,0.0));
                 }
                 // tests whether a point (i, j) lies outside the circle of radius r2
                 else if (r > r2)
                 {
                     // sets potential to 10 for such points - matches our image
                     grid.voltages.push_back(10.0);
-		    efield.gradients.push_back(V2d(0.0,0.0));
-//set gradients int gradientgrid to zero
+                    efield.gradients.push_back(V2d(0.0,0.0));
+                //set gradients int gradientgrid to zero
                 }
                 else
                 {
                     // sets potential to be our solution for all other points
                     grid.voltages.push_back(voltage/log(r2/r1)*(std::log(std::hypot(x-cx, y-cy)/(r1))));
-//insert analytic solution of gradient and pushback into gradient grid   
-		    efield.gradients.push_back(V2d((1/log(r2/r1))*voltage*(x-cx)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy))),(1/log(r2/r1))*voltage*(y-cy)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy)))));
+                    //insert analytic solution of gradient and pushback into gradient grid
+                    efield.gradients.push_back(V2d(
+                                                   -(1/log(r2/r1))*voltage*(x-cx)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy))),
+                                                   -(1/log(r2/r1))*voltage*(y-cy)*(1/((x-cx)*(x-cx)+(y-cy)*(y-cy)))));
 		}
 
 
@@ -101,7 +103,7 @@ namespace AGF
                 {
                     // sets potential to zero for such points
                     grid.voltages.push_back(0.0);
-		    efield.gradients.push_back(V2d(0.0,0.0));
+                    efield.gradients.push_back(V2d(0.0, 0.0));
                 }
                 // tests whether a point lies outwith circle of radius r2
                 else if (r >  r2)
@@ -109,7 +111,7 @@ namespace AGF
                     // potential takes form of parralel plate solution at such points
                     // (SHOULD WE JUST ASSUME THAT POLAR SOLUTION BELOW CORRECTLY DESCRIBES POTENTIAL OUTSIDE r2 AND REMOVE THIS TEST??
                     grid.voltages.push_back(-(2.0*voltage*(x-cx)) / (lineLength / cellsPerMeter));
-		    efield.gradients.push_back(V2d(-(2.0*voltage) / (lineLength / cellsPerMeter),0.0));
+                    efield.gradients.push_back(V2d((2.0*voltage) / (lineLength / cellsPerMeter),0.0));
                 }
                 else
                 {
@@ -117,9 +119,11 @@ namespace AGF
                     double costheta = (x-cx)/r;
                     // set potential to be our polar solution for all remaining points
                     const f64 xx= (x-cx)*(x-cx);
-		    const f64 yy= (y-cy)*(y-cy);
+                    const f64 yy= (y-cy)*(y-cy);
                     grid.voltages.push_back((r-r1)*( -voltage/(r2-r1))*costheta);
-		    efield.gradients.push_back(V2d((voltage/(r1-r2))-((r1*voltage*(yy))/((r1-r2)*(std::pow(xx+yy,3.0/2.0)))),(r1*voltage*(x-cx)*(y-cy)/((r1-r2)*(std::pow(xx+yy,3.0/2.0))))));
+                    efield.gradients.push_back(V2d
+                                               (-(voltage/(r1-r2))-((r1*voltage*(yy))/((r1-r2)*(std::pow(xx+yy,3.0/2.0)))),
+                                                -(r1*voltage*(x-cx)*(y-cy)/((r1-r2)*(std::pow(xx+yy,3.0/2.0))))));
                 }
             }
         }
