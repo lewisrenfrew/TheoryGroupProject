@@ -8,5 +8,6 @@
     "HorizontalZip" : false,
     "VerticalZip" : false,
     "AnalyticInnerRadius" : 6,
-    "AnalyticOuterRadius" : 96 
+    "AnalyticOuterRadius" : 96, 
+    "CalculationMode" : "GS"
 }

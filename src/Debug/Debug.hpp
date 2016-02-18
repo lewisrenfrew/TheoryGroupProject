@@ -69,6 +69,9 @@ namespace Lethani
         /// Change console output to a stringstream protected by a mutex
         void LogConsoleToProtectedStream(std::stringstream* sstream, std::mutex* lock);
 
+        /// Resets the output from Protected stream to stdout
+        void ResetToStdOut();
+
         /// Prints to stdout and filename
         void DebugPrintf(const char* _format, ...);
         /// Static method printing only to stdout, can be called

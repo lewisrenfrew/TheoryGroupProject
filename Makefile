@@ -1,6 +1,7 @@
 # CXX=clang++
-# CXX=g++-5
 CXX=g++
+# CXX=g++
+
 
 HERE:=$(shell pwd)
 
@@ -24,7 +25,7 @@ OPTFLAGS=$(OPTFLAGS5)
 # OBJECT=$(ASM)
 
 # Set true to enable threading, empty for not
-ENABLEOPENMP=
+ENABLEOPENMP=true
 
 FEATUREFLAGS1=-DDEBUG -DMAT_ACC -DUSE_SIMD -fno-omit-frame-pointer # Debug
 FEATUREFLAGS2=-DNDEBUG -DMAT_ACC -DUSE_SIMD # Release
@@ -44,7 +45,7 @@ FFLAGS+= -ftemplate-depth=1024
 endif
 ## Enable openmp on g++
 ifdef ENABLEOPENMP
-ifeq ($(CXX),$(filter $(CXX),g++ g++-5))
+ifeq ($(CXX),$(filter $(CXX),g++ g++))
 FFLAGS+= -DGOMP
 OPTFLAGS+= -fopenmp
 endif

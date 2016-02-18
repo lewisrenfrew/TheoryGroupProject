@@ -2,6 +2,8 @@ const remote = require('remote');
 const BrowserWindow = remote.BrowserWindow;
 const dialog = remote.require('dialog');
 const execFile = require('child_process').execFile;
+const mustache = require('./node_modules/mustache/mustache.min.js');
+const ndjson = require('./node_modules/ndjson/index.js');
 // preload.js
 // require('module').globalPaths.push(__dirname + '/node_modules');
 const $ = require('./node_modules/jquery/dist/jquery.min.js');
@@ -14,13 +16,22 @@ var OperatingMode = Object.freeze({SingleSimulation : {},
                                    CompareProb1 : {},
                                    CompareTwo : {}});
 
-var state = {};
-// state.defaultJSON = JSON.parse('default.json');
+var state = {
+    child : null
+};
+
 (function loadDefauts(){
     $.getJSON('default.json', function(data){
         state.defaults = data;
     });
     state.mode = OperatingMode.SingleSimulation;
+    window.onbeforeunload = function (event) {
+        if (state.child != null) {
+            state.child.kill();
+            alert("Killing child on exit...");
+        }
+    }
+
 })();
 
 function loadImage() {
@@ -61,55 +72,17 @@ function resizeImg(img) {
 }
 
 function headerToHTML(json) {
-    var html =
-'<h6 class="sec-title">Default Parameters</h6>\
-        <div class="row">\
-<div class="six columns">\
-<label for="maxRelErr">Max Relative Error</label>\
-<input type="number" class="u-full-width" placeholder="' + state.defaults.MaxRelErr.toString() +
-        '" id="maxRelErr" name="maxRelErr">\
-</div>'
-    + '<div class="six columns">\
-<label for="maxIter">Max Iterations</label>\
-<input type="number" class="u-full-width" placeholder="' + state.defaults.MaxIterations.toString() +
-        '" id="maxIter" name="maxIter">\
-</div></div>'
-    // The above pair is 1 row
-    +
-        '<div class="row">\
-<div class="six columns">\
-<label for="ppm">Pixels Per Meter</label>\
-<input type="number" class="u-full-width" placeholder="' + state.defaults.PixelsPerMeter.toString() +
-        '" id="ppm" name="ppm">\
-</div>'
-    + '<div class="three columns">\
-<label for="vzip">Vertical Zip</label>\
-<input type="checkbox" id="vzip" name="vzip"></div>'
-    + '<div class="three columns">\
-<label for="hzip">Horizontal Zip</label>\
-<input type="checkbox" id="hzip" name="hzip">\
-</div></div>'
+    var html = mustache.to_html($('#headerTemplate').html(), json);
 
     if (state.mode === OperatingMode.CompareProb0
         || state.mode === OperatingMode.CompareProb1) {
 
-        html += '<div class="row">\
-<div class="six columns">\
-<label for="innerRad">Inner Circle Radius</label>\
-<input type="number" class="u-full-width" id="innerRad" name="innerRad">\
-</div>'
-        +
-'<div class="six columns">\
-<label for="outerRad">Outer Circle Radius</label>\
-<input type="number" class="u-full-width" id="outerRad" name="outerRad">\
-</div></div>'
+        html += $('#header0Or1Template').html();
     }
-    // The above group is 1 row
     return html;
 }
 
-
-// http://stackoverflow.com/a/5624139/3847013 for the next to functions
+// http://stackoverflow.com/a/5624139/3847013 for the next two functions
 function componentToHex(c) {
     var hex = c.toString(16);
     return hex.length == 1 ? "0" + hex : hex;
@@ -132,17 +105,20 @@ function checkConstant(select) {
 function selectJSONToOption(str) {
     switch (str) {
     case 'Constant':
-        return '<option value="const" selected>Constant</option>\
-<option value="hlerp">Horizontal Lerp</option>\
-<option value="vlerp">Vertical Lerp</option>'
+        return $('#selectConstant').html();
     case 'HorizontalLerp':
-        return '<option value="const">Constant</option>\
-<option value="hlerp" selected>Horizontal Lerp</option>\
-<option value="vlerp">Vertical Lerp</option>'
+        return $('#selectHLerp').html();
     case 'VerticalLerp':
-        return '<option value="const">Constant</option>\
-<option value="hlerp">Horizontal Lerp</option>\
-<option value="vlerp" selected>Vertical Lerp</option>'
+        return $('#selectVLerp').html();
+    }
+}
+
+function disableBox(str) {
+    switch (str) {
+    case 'Constant':
+        return '';
+    default:
+        return 'disabled="disabled"'
     }
 }
 
@@ -159,70 +135,49 @@ function colorHTMLObject(col, i) {
         }
     }
 
+    var data;
     if (inMap) {
-        var name = 'color' + i.toString();
-        var html = '<div class="six columns">\
-<label for="' + name + '">Color '+ i.toString() +'\
-<div class="color-box u-fill-width" style="background-color:'+ rgbToHex(col.r, col.g, col.b)+ '"></div>\
-</label>';
-        if (cmap[index].Type === 'Constant'){
-            html +='<input type="number" name="color' + i.toString() + '" class="u-full-width" placeholder="Constant" value="' + cmap[index].Value + '" id="color' + i.toString() + '">';
-        } else {
-            html +='<input type="number" name="color' + i.toString() + '" class="u-full-width" placeholder="Constant" disabled="disabled" id="color' + i.toString() + '">';
-        }
-        html += '<select class="u-full-width" name="selectColor' + i.toString() + '" "id="selectColor' + i.toString() + '" onchange="checkConstant(this)">';
-        html += selectJSONToOption(cmap[index].Type);
-        html += '</select></div>';
-        return html;
-
+        data = cmap[index];
+        data.i = i;
+        data.selector = selectJSONToOption(cmap[index].Type);
+        data.disabled = disableBox(cmap[index].Type);
+        data.colorString = rgbToHex(col.r, col.g, col.b);
     } else {
-
-        var name = 'color' + i.toString();
-        var html = '<div class="six columns">\
-<label for="' + name + '">Color '+ i.toString() +'\
-<div class="color-box u-fill-width" style="background-color:'+ rgbToHex(col.r, col.g, col.b)+ '"></div>\
-</label>\
-<input type="number" name="color' + i.toString() + '" class="u-full-width" placeholder="Constant" id="color' + i.toString() + '">\
-<select class="u-full-width" name="selectColor' + i.toString() + '" "id="selectColor' + i.toString() + '" onchange="checkConstant(this)">\
-<option value="const">Constant</option>\
-<option value="hlerp">Horizontal Lerp</option>\
-<option value="vlerp">Vertical Lerp</option>\
-</select>\
-</div>'
-        return html;
+        data = {
+            i : i,
+            selector : selectJSONToOption('Constant'),
+            colorString : rgbToHex(col.r, col.g, col.b)
+        };
     }
-
-}
-
-function SubmitButtonHTML() {
-    var html = '<div class="row" align="right">\
-<input type="button" value="Simulate" onclick="runForm();"></div>';
+    var html = mustache.to_html($('#colorTemplate').html(), data);
     return html;
 }
 
+
 function colorDataToHTML(json) {
-    var html = '<h6 class="sec-title">Color Data</h6>'
+    var html = '';
     for (i = 0; i < json.ColorMap.length; i += 2) {
-        html +='<div class="row">'
         var col = json.ColorMap[i];
-        html += colorHTMLObject(col, i);
+        var colObj = {};
+        colObj.colorObj1 = colorHTMLObject(col, i);
 
         if (i+1 < json.ColorMap.length) {
             col = json.ColorMap[i+1];
-            html += colorHTMLObject(col, i+1);
+            colObj.colorObj2 = colorHTMLObject(col, i+1);
         }
-        html += '</div>'
+
+        html += mustache.to_html($('#colorRowTemplate').html(), colObj);
     }
-    return html;
+    var colorData = mustache.to_html($('#colorDataTemplate').html(), { colorList : html});
+    return colorData;
 }
 
 function outputSimDataForm(json) {
     var form = document.getElementById('colorData');
-    state.numColors = json.ColorMap.length;
-    var header = headerToHTML(json);
-    var cmap = colorDataToHTML(json);
-    var simButton = SubmitButtonHTML();
-    form.innerHTML = '<form id="mainForm">' + header + cmap + simButton + '</form>';
+    var html = mustache.to_html($('#formTemplate').html(), { header : headerToHTML(json),
+                                                             colors : colorDataToHTML(json),
+                                                             button : $('#submitButtonTemplate').html()});
+    form.innerHTML = html;
 }
 
 function setOperatingMode() {
@@ -286,28 +241,11 @@ function jsonDefaultOr(json, field, value, func) {
     return json;
 }
 
-function selectToGridleType(sel) {
-    switch (sel) {
-    case 'const': {
-        return 'Constant';
-    } break;
-
-    case 'hlerp': {
-        return 'HorizontalLerp';
-    } break;
-
-    case 'vlerp': {
-        return 'VerticalLerp';
-    } break;
-
-    }
-}
-
 function runForm() {
     var form = $('#mainForm').serializeArray();
     var data = JSON.stringify(form);
     // console.log(data);
-    var json = state.jsonIn;
+    var json = Object.assign({}, state.jsonIn);
 
     var cmap = [];
 
@@ -376,7 +314,7 @@ function runForm() {
                 if (cmap[num] == null) {
                     cmap[num] = {};
                 }
-                cmap[num].Type = selectToGridleType(form[i].value);
+                cmap[num].Type = form[i].value;
                 cmap[num].Color = json.ColorMap[num];
 
             } continue;
@@ -389,15 +327,90 @@ function runForm() {
     }
 
     json.ColorMap = cmap;
-    console.log(JSON.stringify(json));
-    var outputFilename = '/tmp/my.json';
+    const jsonStr = JSON.stringify(json, null, 4);
 
-    fs.writeFile(outputFilename, JSON.stringify(json, null, 4) + '\0', function(err) {
-        if(err) {
-            console.log(err);
-        } else {
-            console.log("JSON saved to " + outputFilename);
-        }
-    });
+    var modeString;
+
+    switch (state.mode) {
+    case OperatingMode.SingleSimulation: {
+        modeString = '-i';
+    } break;
+
+    case OperatingMode.CompareProb0: {
+        modeString = '-0';
+    } break;
+
+    case OperatingMode.CompareProb1: {
+        modeString = '-1';
+    } break;
+
+    case OperatingMode.CompareTwo: {
+        modeString = '-c';
+    } break;
+    }
+
+    state.jsonExec = jsonStr;
+    remote.getGlobal('state').inner = state;
+
+    runSimulation(modeString, jsonStr);
+}
+
+// To Marc, with <3
+function killChild() {
+    if (state.child !== null)
+        state.child.kill();
+}
+
+function viewOutput() {
+    document.getElementById('viewSim').innerHTML = $('#viewSimButtonTemplate').html();
+}
+
+function runSimulation(modeString, json) {
+    document.getElementById('simulationData').innerHTML = $('#simulationDataTemplate').html();
+
+    if (state.child == null)
+    {
+        state.graphs = [];
+
+        const child = execFile('bin/gridle', ['-j', '-g', modeString], { cwd: ".."},
+                               (error, stdout, stderr) => {
+                               });
+
+        child.stdout.pipe(ndjson.parse())
+            .on('data', (data) => {
+                switch (data.type) {
+                case 'timing':
+                    // fall through
+                case 'message': {
+                    var out = document.getElementById('gridleOutput');
+                    var currentText = out.innerHTML;
+                    var str = $('<div>').text(data.message).html();
+                    currentText += EOL + str;
+                    currentText = currentText.match(/\s*([\s\S]*)/)[1];
+                    out.innerHTML = currentText;
+                } break;
+                case 'graph': {
+                    state.graphs.push(data);
+                }
+                }
+            })
+
+        state.child = child;
+        child.stdin.write(json);
+        child.stdin.end();
+
+        child.on('close', (code) => {
+            state.child = null;
+            console.log(`Done with ${code}`);
+            if (code == 0) {
+                remote.getGlobal('state').graphs = state.graphs;
+                viewOutput();
+            }
+
+        })
+    } else {
+        // $('#gridleOutput').text('Process already running: please kill current simulation first');
+        alert('Process already running: please kill current simulation first');
+    }
 
 }
