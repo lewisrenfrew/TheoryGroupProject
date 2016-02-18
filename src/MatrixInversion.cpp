@@ -21,6 +21,7 @@ namespace MatrixInversion
     void
     MatrixInversionMethod(Grid* grid, const f64 stopPoint , const u64 maxIter)
     {
+        TIME_FUNCTION();
         using namespace Eigen;
         
         // checking if square matrix if not return nothing
@@ -38,6 +39,7 @@ namespace MatrixInversion
         // counter what line on the actual grid the program is in 
         int k=0;
 
+        LOG("Setting up grid.");
         
         // grid->lineLength  (how to find the line wrapping)
         // Loop through the number of columns on A
@@ -67,7 +69,7 @@ namespace MatrixInversion
                     A(y,y)= -4;
 
                     //put 1 in A one left and one right of current place
-                    A(y,y+1) = 1;                                                                                     
+                    A(y,y+1) = 1;     
                     A(y,y-1) = 1;
                      
                     // put 1 in A one up and one down of current place
@@ -80,10 +82,12 @@ namespace MatrixInversion
             // add one to the k value here
             k++;            
         }
-        
+
+        LOG("Solving grid");
         // calculate the V by mutilpying (invers of A) * (known)
         V = A.inverse() * known.transpose();
 
+        LOG("Creating output grid");
         // Fill in the grid with calculated values
         for (int i = 1; i < V.rows() ; i++ )
         {            
