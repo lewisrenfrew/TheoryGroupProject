@@ -11,6 +11,9 @@
 #include "Grid.hpp"
 #include "Utility.hpp"
 
+#include "GlobalDefines.hpp"
+
+
 #include <cmath>
 #include <atomic>
 #include <algorithm>
@@ -29,12 +32,13 @@ namespace MatrixInversion
         {
             return;
         }
+             
         // create three matricies and fill them with zeroes
         MatrixXd A = MatrixXd::Zero(grid->lineLength * grid->numLines
                       , grid->lineLength * grid->numLines);
               
         MatrixXd V = MatrixXd::Zero(1,grid->lineLength * grid->numLines);
-        MatrixXd known(1,grid->lineLength * grid->numLines);
+        MatrixXd known = MatrixXd::Zero(1,grid->lineLength * grid->numLines);
 
         // counter what line on the actual grid the program is in 
         int k=0;
@@ -55,7 +59,7 @@ namespace MatrixInversion
                     // to that place in known
                     A(y,y) = 1;                   
                     known(0,y)=(*grid).voltages[k * grid->numLines + x];
-
+                   
                     // The way A and known are structured y need to be incremented here
                     y++;
                         
@@ -75,18 +79,19 @@ namespace MatrixInversion
                     // put 1 in A one up and one down of current place
                     A(y,y+grid->numLines) = 1;
                     A(y,y-(grid->numLines)) = 1 ;                  
-                     
+
                     y++;                     
                 }
             }
             // add one to the k value here
-            k++;            
+            k++;
+            
         }
-
+        
         LOG("Solving grid");
         // calculate the V by mutilpying (invers of A) * (known)
         V = A.inverse() * known.transpose();
-
+        
         LOG("Creating output grid");
         // Fill in the grid with calculated values
         for (int i = 1; i < V.rows() ; i++ )
