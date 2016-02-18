@@ -235,11 +235,12 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
     const f64 bigRad = cfg->analyticOuter.ValueOr(298.0) / ppm;
     const f64 smallRad = cfg->analyticInner.ValueOr(20.0) / ppm;
 
-    Grid analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, 10.0,
+    auto analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, 10.0,
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
-    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic, DifferenceType::Absolute);
+    
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic.first, DifferenceType::Absolute);
 
     if (!diff)
     {
@@ -250,9 +251,10 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
 
     PlottableGrids grids;
     grids.singleSimGrid = grid;
-    grids.grid2 = analytic;
+    grids.grid2 = analytic.first;
     grids.singleSimVector = gradGrid;
     grids.difference = diff;
+    grids.vector2 = analytic.second;
 
     WritePlotFiles(grids, Cfg::OperationMode::CompareProblem0);
 
@@ -321,11 +323,11 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
     // const f64 bigRad = 25.0 / pixelsPerMeter.ValueOr(100.0);
     // const f64 smallRad = 3.0 / pixelsPerMeter.ValueOr(100.0);
 
-    Grid analytic = AGF::AnalyticalGridFill1(grid.lineLength, grid.numLines, 10.0,
+    auto analytic = AGF::AnalyticalGridFill1(grid.lineLength, grid.numLines, 10.0,
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
-    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic);
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic.first);
 
     if (!diff)
     {
@@ -336,9 +338,10 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
 
     PlottableGrids grids;
     grids.singleSimGrid = grid;
-    grids.grid2 = analytic;
+    grids.grid2 = analytic.first;
     grids.singleSimVector = gradGrid;
     grids.difference = diff;
+    grids.vector2 = analytic.second;
 
     WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1);
 
