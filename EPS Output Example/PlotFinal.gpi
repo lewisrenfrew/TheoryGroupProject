@@ -1,0 +1,10 @@
+set terminal epslatex 
+set output "Grid.tex"
+load '../Plot/MorelandColors.plt'
+set xlabel "x"
+set ylabel "y"
+set xrange [0:599]; set yrange [0:1199]
+set size ratio 2.000000
+set style data lines
+set title "Stable Potential (V)"
+plot "../Plot/Grid.dat" with image title "Numeric Solution"

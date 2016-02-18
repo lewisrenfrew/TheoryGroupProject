@@ -1,0 +1,7 @@
+run 
+gnuplot PlotFinal.gpi
+to create Grid.tex and Grid.eps
+then convert Grid.eps to PDF using
+ps2pdf -dEPSCrop Grid.eps Grid.pdf
+then compile latex file
+pdflatex epstext.tex
