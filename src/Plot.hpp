@@ -63,7 +63,8 @@ namespace Plot
         Option<Grid> difference;
     };
 
-    /// Uses gnuplot to produce the plots based on the on the provided plots and mode
+    /// Uses gnuplot to produce the plots based on the on the provided
+    /// plots and mode. Returns true on success
     bool
     WritePlotFiles(const PlottableGrids& grids,
                    const Cfg::OperationMode mode);

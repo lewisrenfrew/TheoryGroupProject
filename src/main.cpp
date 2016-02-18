@@ -42,8 +42,8 @@ TimedFunction::TimedFunction(const char* fnName) :  fn_(fnName)
 
 TimedFunction::~TimedFunction()
 {
-    end_  = std::chrono::high_resolution_clock::now();
-    auto diff = end_ - start_;
+    auto end  = std::chrono::high_resolution_clock::now();
+    auto diff = end - start_;
     Log::GetAnalytics().
         ReportTimedFunction(fn_,
                             std::chrono::duration_cast<std::chrono::milliseconds>(diff));
@@ -156,7 +156,6 @@ ParseArguments(const int argc, const char* argv[])
     }
 }
 
-// TODO(Chris): Could solve this with polymorphism, but we would still need instances of each
 static
 void
 DispatchSolver(Jasnah::Option<Cfg::CalculationMode> mode, Grid* grid, f64 zeroTol, f64 maxIter)
@@ -227,18 +226,15 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
         return EXIT_FAILURE;
 
     DispatchSolver(cfg->mode, &grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
-    //FDM::SolveGridLaplacianZero(&grid, zeroTol.ValueOr(0.001), maxIter.ValueOr(20000));
 
     GradientGrid gradGrid;
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
     gradGrid.CalculateNegGradient(grid, ppm);
 
-    // const f64 bigRad = 298.0/pixelsPerMeter.ValueOr(100.0);
-    // const f64 smallRad = 20.0/pixelsPerMeter.ValueOr(100.0);
     const f64 bigRad = cfg->analyticOuter.ValueOr(298.0) / ppm;
     const f64 smallRad = cfg->analyticInner.ValueOr(20.0) / ppm;
 
-    auto analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, 10.0,
+    auto analytic = AGF::AnalyticalGridFill0(grid.lineLength, grid.numLines, cfg->analyticVoltage.ValueOr(10.0),
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
@@ -259,22 +255,12 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
     grids.difference = diff;
     grids.vector2 = analytic.second;
 
-    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem0);
+    if (!WritePlotFiles(grids, Cfg::OperationMode::CompareProblem0))
+    {
+        LOG("Unable to write plots");
+        return EXIT_FAILURE;
+    }
 
-    // WriteGridForGnuplot(grid);
-    // WriteGnuplotColormapFile(grid);
-    // WriteGnuplotContourFile(grid);
-
-    // WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
-    // WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
-
-    // WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
-    // WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
-    // WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
-
-    // WriteGridForGnuplot(analytic);
-    // WriteGnuplotColormapFile(analytic);
-    // WriteGnuplotContourFile(analytic);
     return EXIT_SUCCESS;
 }
 
@@ -317,16 +303,10 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
     const f64 ppm = pixelsPerMeter.ValueOr(100.0);
     gradGrid.CalculateNegGradient(grid, ppm);
 
-    // NOTE(Chris): Since we need bigRad to equal the width in number
-    // of the image in px, we may as well just use that number here
-    const f64 bigRad = grid.lineLength / (2.0*ppm);
+    const f64 bigRad = cfg->analyticOuter.ValueOr(grid.lineLength / (2.0)) / ppm;
     const f64 smallRad = cfg->analyticInner.ValueOr(50.0) / ppm;
 
-    // NOTE(Chris): Small
-    // const f64 bigRad = 25.0 / pixelsPerMeter.ValueOr(100.0);
-    // const f64 smallRad = 3.0 / pixelsPerMeter.ValueOr(100.0);
-
-    auto analytic = AGF::AnalyticalGridFill1(grid.lineLength, grid.numLines, 10.0,
+    auto analytic = AGF::AnalyticalGridFill1(grid.lineLength, grid.numLines, cfg->analyticVoltage.ValueOr(10.0),
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
@@ -346,18 +326,11 @@ CompareProblem1(const bool pathsAreJson, const std::vector<std::string>& paths)
     grids.difference = diff;
     grids.vector2 = analytic.second;
 
-    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1);
-
-    // WriteGridForGnuplot(grid);
-    // WriteGnuplotColormapFile(grid);
-    // WriteGnuplotContourFile(grid);
-
-    // WriteGridForGnuplot(*diff, "Plot/GridDiff.dat");
-    // WriteGnuplotColormapFile(*diff, "Plot/GridDiff.dat", "Plot/GridDiff.gpi");
-
-    // WriteGridForGnuplot(analytic, "Plot/GridAnalytic.dat");
-    // WriteGnuplotColormapFile(analytic, "Plot/GridAnalytic.dat", "Plot/GridAnalytic.gpi");
-    // WriteGnuplotContourFile(analytic, "Plot/GridAnalytic.dat", "Plot/ContourAnalytic.gpi");
+    if (!WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1))
+    {
+        LOG("Unable to plot graphs");
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -429,7 +402,11 @@ CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
     grids.difference = diff;
     grids.vector2 = gradGrid2;
 
-    WritePlotFiles(grids, Cfg::OperationMode::CompareTwo);
+    if (!WritePlotFiles(grids, Cfg::OperationMode::CompareTwo))
+    {
+        LOG("Unable to plot graphs");
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -472,12 +449,11 @@ SingleSimulation(const bool pathIsJson, const std::string& path)
     grids.singleSimGrid = grid;
     grids.singleSimVector = gradGrid;
 
-    WritePlotFiles(grids, Cfg::OperationMode::SingleSimulation);
-
-    // WriteGridForGnuplot(grid);
-    // WriteGnuplotColormapFile(grid);
-    // WriteGnuplotContourFile(grid);
-    // WriteGradientFiles(gradGrid);
+    if (!WritePlotFiles(grids, Cfg::OperationMode::SingleSimulation))
+    {
+        LOG("Unable to plot graphs");
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -514,7 +490,6 @@ Preprocess(const std::string& path)
 
     if (!Cfg::WriteJSONPreprocFile(json))
         return EXIT_FAILURE;
-
 
     return EXIT_SUCCESS;
 }

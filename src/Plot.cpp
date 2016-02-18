@@ -15,6 +15,9 @@
 
 #include <cmath>
 #include <cstdio>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifndef GNUPLOT_VERBOSE
 static constexpr const char* const gnuplot = "gnuplot 2> /dev/null";
@@ -182,34 +185,60 @@ PlotVectorFieldString(const GradientGrid& grid, const char* outputName, const ch
 }
 
 /// Plots the provided string using gnuplot and a temporary file.
-/// Returns true on success
+/// Returns true on success. This relies on POSIX functionality
 static
 bool
 GnuplotString(const std::string& data)
 {
-    FILE* gph;
-    const char * const name = "PlotFile.gpi";
-    gph = fopen(name, "w");
+    // NOTE(Chris): We use posix mkstemp to open a temporary file
+    char fileName[] = "/tmp/GridleXXXXXX";
+    int fd = mkstemp(fileName);
+    if (fd < 0)
+    {
+        LOG("Unable to get temporary file descriptor");
+        return false;
+    }
+    // NOTE(Chris): By default our file's permissions are 0600, we
+    // need gnuplot to read it so change settings to allow this
+    fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP);
+    // NOTE(Chris): Open file as FILE* to use formatted IO
+    FILE* gph = fdopen(fd, "w");
     if (!gph)
     {
+        close(fd);
+        LOG("Unable to convert fd to fp");
         return false;
     }
 
     fprintf(gph, "%s\n", data.c_str());
+    fflush(gph);
     fclose(gph);
+    // NOTE(Chris): Close FILE* after flushing
+
+    // NOTE(Chris): Gnuplot command string
     std::string gplot(gnuplot);
     gplot += " ";
-    gplot += name;
+    gplot += fileName;
 
-    FILE* gp;
-    gp = popen(gplot.c_str(), "w");
+    // NOTE(Chris): Run gnuplot
+    FILE* gp = popen(gplot.c_str(), "w");
     if (!gp)
     {
         LOG("Error opening gnuplot");
+        close(fd);
         return false;
     }
-    if (!pclose(gp))
+
+    if (pclose(gp) != 0)
+    {
+        LOG("Error closing gnuplot");
+        close(fd);
         return false;
+    }
+
+    close(fd);
+    // NOTE(Chris): Remove from filesystem when done
+    unlink(fileName);
 
     return true;
 }
@@ -339,7 +368,7 @@ namespace Plot
     {
         // NOTE(Chris): Dispatch to the correct solver
         using Cfg::OperationMode;
-        bool result;
+        bool result = false;
         switch (mode)
         {
         case OperationMode::SingleSimulation:

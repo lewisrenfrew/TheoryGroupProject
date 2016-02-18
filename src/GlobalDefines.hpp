@@ -32,7 +32,6 @@ public:
 private:
     const char* fn_;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_;
-    std::chrono::time_point<std::chrono::high_resolution_clock> end_;
 };
 
 /// Macros for timing functions, insert TIME_FUNCTION() at the start

@@ -51,6 +51,7 @@ namespace Cfg
         Jasnah::Option<bool> verticZip;
         Jasnah::Option<f64> analyticInner;
         Jasnah::Option<f64> analyticOuter;
+        Jasnah::Option<f64> analyticVoltage;
         Jasnah::Option<CalculationMode> mode;
     };
 

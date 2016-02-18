@@ -608,7 +608,7 @@ namespace Jasnah
     template <class T>
     inline constexpr
     bool
-    operator<(const Option<T>& x, EmptyOption_Internal)
+    operator<(const Option<T>&, EmptyOption_Internal)
     {
         return false;
     }
@@ -632,7 +632,7 @@ namespace Jasnah
     template <class T>
     inline constexpr
     bool
-    operator<=(EmptyOption_Internal, const Option<T>& x)
+    operator<=(EmptyOption_Internal, const Option<T>&)
     {
         return true;
     }
@@ -648,7 +648,7 @@ namespace Jasnah
     template <class T>
     inline constexpr
     bool
-    operator>(EmptyOption_Internal, const Option<T>& x)
+    operator>(EmptyOption_Internal, const Option<T>&)
     {
         return false;
     }
@@ -656,7 +656,7 @@ namespace Jasnah
     template <class T>
     inline constexpr
     bool
-    operator>=(const Option<T>& x, EmptyOption_Internal)
+    operator>=(const Option<T>&, EmptyOption_Internal)
     {
         return true;
     }

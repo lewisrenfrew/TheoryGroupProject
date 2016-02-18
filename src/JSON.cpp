@@ -293,7 +293,7 @@ ParseConfig(std::vector<char>* buf, const char* path)
         {
             if (!iter->value.IsUint())
             {
-                LOG("ScaleFactor msut be an unsigned integer");
+                LOG("ScaleFactor must be an unsigned integer");
                 return Jasnah::None;
             }
             result.scaleFactor = iter->value.GetUint();
@@ -369,7 +369,7 @@ ParseConfig(std::vector<char>* buf, const char* path)
         {
             if (!iter->value.IsBool())
             {
-                LOG("HorizontaZip member must be a bool type");
+                LOG("HorizontalZip member must be a bool type");
                 return Jasnah::None;
             }
             result.horizZip = iter->value.GetBool();
@@ -393,6 +393,16 @@ ParseConfig(std::vector<char>* buf, const char* path)
                 return Jasnah::None;
             }
             result.analyticInner = iter->value.GetDouble();
+        } break;
+
+        case StringHash("AnalyticVoltage"):
+        {
+            if (!iter->value.IsNumber())
+            {
+                LOG("AnalyticVoltage member must be a number");
+                return Jasnah::None;
+            }
+            result.analyticVoltage = iter->value.GetDouble();
         } break;
 
         case StringHash("AnalyticOuterRadius"):
