@@ -242,7 +242,7 @@ CompareProblem0(const bool pathsAreJson, const std::vector<std::string>& paths)
                                              bigRad,
                                              smallRad,
                                              scaleFactor.ValueOr(1) * ppm);
-    
+
     Jasnah::Option<Grid> diff = Cmp::Difference(grid, analytic.first, DifferenceType::Absolute);
 
     if (!diff)
@@ -371,6 +371,54 @@ CompareTwo(const bool pathsAreJson, const std::vector<std::string>& paths)
         LOG("Expected 2 paths");
         return EXIT_FAILURE;
     }
+
+    Jasnah::Option<Cfg::GridConfigData> cfg1;
+    Jasnah::Option<Cfg::GridConfigData> cfg2;
+
+    if (pathsAreJson)
+    {
+        cfg1 = Cfg::LoadGridConfigString(paths.front());
+        cfg2 = Cfg::LoadGridConfigString(paths.front());
+    }
+    else
+    {
+        cfg1 = Cfg::LoadGridConfigFile(paths.front().c_str());
+        cfg2 = Cfg::LoadGridConfigFile(paths.front().c_str());
+    }
+
+    if (!cfg1 || !cfg2)
+    {
+        LOG("Cannot understand config file, exiting");
+        return EXIT_FAILURE;
+    }
+
+    Grid grid1(cfg1->horizZip.ValueOr(false), cfg1->verticZip.ValueOr(false));
+    if (!grid1.LoadFromImage(cfg1->imagePath.c_str(), cfg1->constraints, cfg1->scaleFactor.ValueOr(1)))
+        return EXIT_FAILURE;
+
+    DispatchSolver(cfg1->mode, &grid1, cfg1->zeroTol.ValueOr(0.001), cfg1->maxIter.ValueOr(20000));
+
+    GradientGrid gradGrid1;
+    const f64 ppm = cfg1->pixelsPerMeter.ValueOr(100.0);
+    gradGrid1.CalculateNegGradient(grid1, ppm);
+
+    Jasnah::Option<Grid> diff = Cmp::Difference(grid1, grid2);
+
+    if (!diff)
+    {
+        return EXIT_FAILURE;
+    }
+
+    using namespace Plot;
+
+    PlottableGrids grids;
+    grids.singleSimGrid = grid;
+    grids.grid2 = analytic.first;
+    grids.singleSimVector = gradGrid;
+    grids.difference = diff;
+    grids.vector2 = analytic.second;
+
+    WritePlotFiles(grids, Cfg::OperationMode::CompareProblem1);
 
     LOG("Not yet implemented");
     return EXIT_SUCCESS;
