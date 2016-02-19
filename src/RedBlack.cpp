@@ -59,7 +59,7 @@ namespace RedBlack
     /// function after verifying its appropriateness
     static
     void
-    FDMParaNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
+    RedBlackParaNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
     {
         // NOTE(Chris): Multi-threaded variant
 
@@ -176,7 +176,7 @@ namespace RedBlack
 /// rows may need to be zipped. The dispatch function can determine this
 static
 void
-FDMParaZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
+RedBlackParaZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
            const StopParams& stop, const PreprocessedGridZips& zips)
 {
         // NOTE(Chris): Multi-threaded variant
@@ -377,24 +377,20 @@ FDMParaZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>&
     LOG("Overran max iteration counter (%u), max error: %f", (unsigned)stop.maxIter, maxErr.load());
 }
 
-/// Single threaded finite difference implementation that ignores
+/// Single threaded RedBlack implementation that ignores
 /// the outer row/column of points where points may need to be
 /// fixed. Thus, these all need to be fixed points. If handled by
 /// the dispatch function then this is all handled automagically
 static
 void
-FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
+RedBlackSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
 {
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
-
     JasUnpack((*grid), voltages, lineLength);
 
     // Check error every 500 iterations at first
     const uint errorChunk = 500;
 
+    // Max relative change
     f64 maxErr = 0.0;
     // Main loop - start from 1 so as not to calculate error on first iteration
     for (u64 i = 1; i <= stop.maxIter; ++i)
@@ -403,11 +399,10 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
         // other way, it will have to backtrack on the very rare
         // cases that this comes up (1 in errorChunk times). This
         // is a penalty of < 200 cycles on those rare occasions
+
+        // Calculate and check error every chunk (500 iterations by default)
         if (unlikely(i % errorChunk == 0))
         {
-            // Atomic comparisons are slow compared to normal
-            // scalars, so declare a thread-local maxErr and then
-            // just update the main one at the end
             maxErr = 0.0;
 
             // Loop over the non-fixed points
@@ -445,26 +440,17 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
                 return;
             }
 
-            // Else set new target if possible. If we plot the error
-            // per iteration we not that it remains fixed at 1.0 until
-            // all cells have been filled, after this point it drops
-            // roughly as k*i^{-2} where k is a constant and i is the
-            // number of iterations. => err_i * i^2 = err_j * j^2. So
-            // when err_j is zeroTol, and err_i has been calculated we
-            // can find an approximate value for j
-            if (maxErr < 1.0)
+            if (i % 5000 == 0)
             {
-                // If this is calculated near the beginning it tends
-                // to overshoot, go to a quarter to refine the counter
-                // (we use a modulo anyway so it will still stop at
-                // the prediction)
+                // Output current error every 5000 iterations
                 LOG("Relative change after %u iterations %f", (unsigned)i, maxErr);
             }
         }
         else // normal path
         {
-            // Loop over the non-fixed points and apply the FDM only
-            // for (auto coord = coordRange.begin(); coord < coordRange.end(); ++coord)
+            // Loop over the non-fixed points and apply the RedBlack,
+            // no error calculations -- that comparison is costly for
+            // the cache
             for (const auto c : redPts)
             {
                 const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
@@ -484,14 +470,9 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
 /// account that some points need to be zipped
 static
 void
-FDMSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
+RedBlackSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
              const StopParams& stop, const PreprocessedGridZips& zips)
 {
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
-
     JasUnpack((*grid), voltages, lineLength, numLines);
     JasUnpack(zips, hZip, vZip, hvZip);
 
@@ -525,15 +506,8 @@ FDMSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint
     // Main loop - start from 1 so as not to calculate error on first iteration
     for (u64 i = 1; i <= stop.maxIter; ++i)
     {
-        // Unlikely means the branch predictor will always go the
-        // other way, it will have to backtrack on the very rare
-        // cases that this comes up (1 in errorChunk times). This
-        // is a penalty of < 200 cycles on those rare occasions
         if (unlikely(i % errorChunk == 0))
         {
-            // Atomic comparisons are slow compared to normal
-            // scalars, so declare a thread-local maxErr and then
-            // just update the main one at the end
             maxErr = 0.0;
 
             // Loop over the non-fixed points
@@ -614,26 +588,15 @@ FDMSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint
                 return;
             }
 
-            // Else set new target if possible. If we plot the error
-            // per iteration we not that it remains fixed at 1.0 until
-            // all cells have been filled, after this point it drops
-            // roughly as k*i^{-2} where k is a constant and i is the
-            // number of iterations. => err_i * i^2 = err_j * j^2. So
-            // when err_j is zeroTol, and err_i has been calculated we
-            // can find an approximate value for j
-            if (maxErr < 1.0)
+            // Log error every 5000 iterations
+            if (i % 5000 == 0)
             {
-                // If this is calculated near the beginning it tends
-                // to overshoot, go to a quarter to refine the counter
-                // (we use a modulo anyway so it will still stop at
-                // the prediction)
                 LOG("Relative change after %u iterations %f", (unsigned)i, maxErr);
             }
         }
         else // normal path
         {
-            // Loop over the non-fixed points and apply the FDM only
-            // for (auto coord = coordRange.begin(); coord < coordRange.end(); ++coord)
+            // Loop over the non-fixed points and apply the RedBlack
             for (const auto c : redPts)
             {
                 const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
@@ -645,6 +608,7 @@ FDMSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint
                 voltages[c] = newVal;
             }
 
+            // Handle the exterior Zip points by wrapping around the grid
             for (const auto& coord : hZip)
             {
                 const f64 newVal = WrapGridAccessNewVal(coord);
@@ -806,7 +770,7 @@ PreprocessGridZips(const Grid& grid)
 
 /// The dispatch function for finite difference method. Checks the
 /// validity of the grid WRT zip parameters and then dispatches it
-/// to 1 of 4 worked functions, depending on whether it has zips,
+/// to 1 of 4 worker functions, depending on whether it has zips,
 /// and whether we are running parallel code or not
 void
 RedBlackSolver(Grid* grid, const f64 zeroTol,
@@ -818,19 +782,6 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
     // the most appropriate function (zips or not, parallel or
     // not), after having preprocessed the grid to check its
     // validity
-
-    // NOTE(Chris): The only way I can think of to improve this from
-    // here is SIMD. But that also poses certain problems, we'd need
-    // to iterate over all cells (for memory alignedness), rather than
-    // just the non-fixed cells, then we would need to reassign the
-    // fixed cells (would blow the cache), even with AVX we probably
-    // wouldn't get more than a 2.5x gain unless I'm missing something
-    // algorithmically
-
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
     JasUnpack((*grid), horizZip, verticZip, numLines, lineLength, fixedPoints);
 
@@ -896,11 +847,11 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
     {
         if (parallel)
         {
-            FDMParaNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
+            RedBlackParaNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
         }
         else
         {
-            FDMSingleNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
+            RedBlackSingleNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
         }
         return;
     }
@@ -909,11 +860,11 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
 
     if (parallel)
     {
-        FDMParaZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
+        RedBlackParaZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
     }
     else
     {
-        FDMSingleZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
+        RedBlackSingleZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
     }
 }
 }
