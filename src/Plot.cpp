@@ -93,7 +93,7 @@ PlotContourMapString(const Grid& grid, const char* outputName, const char* title
             "set size ratio %f\n"
             "set style data lines\n"
             "set title \"%s\"\n"
-            "set key default\n"
+            // "set key default\n"
             "splot '-' with lines title \"\"\n",
             outputName,
             lineLength-1,
