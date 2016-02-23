@@ -59,7 +59,7 @@ namespace RedBlack
     /// function after verifying its appropriateness
     static
     void
-    FDMParaNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
+    RedBlackParaNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
     {
         // NOTE(Chris): Multi-threaded variant
 
@@ -98,11 +98,6 @@ namespace RedBlack
             // We will just double buffer these 2 vectors to avoid reallocations new<->old
             // const ref to avoid damage again
 
-            // Loop over threads (split per thread and complete work chunk)
-            // Unlikely means the branch predictor will always go the
-            // other way, it will have to backtrack on the very rare
-            // cases that this comes up (1 in errorChunk times). This
-            // is a penalty of < 200 cycles on those rare occasions
             if (unlikely(i % errorChunk == 0))
             {
                 maxErr = 0.0;
@@ -144,14 +139,8 @@ namespace RedBlack
                     return;
                 }
 
-                // Else set new target if possible. If we plot the error
-                // per iteration we not that it remains fixed at 1.0 until
-                // all cells have been filled, after this point it drops
-                // roughly as k*i^{-2} where k is a constant and i is the
-                // number of iterations. => err_i * i^2 = err_j * j^2. So
-                // when err_j is zeroTol, and err_i has been calculated we
-                // can find an approximate value for j
-                if (maxErr < 1.0)
+                // NOTE(Chris): Report error every 5000 iterations
+                if (i % 5000 == 0)
                 {
                     // If this is calculated near the beginning it tends
                     // to overshoot, go to a quarter to refine the counter
@@ -187,55 +176,40 @@ namespace RedBlack
 /// rows may need to be zipped. The dispatch function can determine this
 static
 void
-FDMParaZip(Grid* grid, const std::vector<uint>& coordRange,
+RedBlackParaZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
            const StopParams& stop, const PreprocessedGridZips& zips)
 {
-    // NOTE(Chris): Multi-threaded variant
+        // NOTE(Chris): Multi-threaded variant
 
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
+        // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
+        // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
+        //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
+        // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
-    // NOTE(Chris): We never write to the fixed points, so we don't
-    // need to re-set them (as long as they were set properly in the
-    // incoming grid using AddFixedPoint)
+        // NOTE(Chris): We never write to the fixed points, so we don't
+        // need to re-set them (as long as they were set properly in the
+        // incoming grid using AddFixedPoint)
 
-    JasUnpack((*grid), voltages, numLines, lineLength);
-    JasUnpack(zips, hZip, vZip, hvZip);
+        JasUnpack((*grid), voltages, numLines, lineLength);
+        JasUnpack(zips, hZip, vZip, hvZip);
 
-    // Create the previous voltage array from the current array
-    decltype(grid->voltages) prevVoltages(voltages);
+        // Check error every 500 iterations at first
+        uint errorChunk = 500;
 
-    // Check error every 500 iterations at first
-    uint errorChunk = 500;
+        // Hand-waving 10k iterations per thread as minimum to not be dominated by context switches etc.
+        const uint numWorkChunks = (voltages.size() / 20000 > 0) ? (voltages.size() / 20000) : 1;
+        const uint numThreads = (numWorkChunks > omp_get_max_threads())
+            ? ((MaxThreads > omp_get_max_threads())
+               ? omp_get_max_threads()
+               : MaxThreads)
+            : numWorkChunks;
 
-    // Hand-waving 10k iterations per thread as minimum to not be dominated by context switches etc.
-    const uint numWorkChunks = (prevVoltages.size() / 10000 > 0) ? prevVoltages.size() / 10000 : 1;
-    const uint numThreads = (prevVoltages.size() / omp_get_max_threads() >= 10000)
-        ? (omp_get_max_threads() > MaxThreads ? MaxThreads : omp_get_max_threads())
-        : numWorkChunks;
-    omp_set_num_threads(numThreads);
-    // remaining points that don't divide between the threads
-    const uint rem = prevVoltages.size() % numThreads;
-    // size of work chunk for each thread
-    const uint blockSize = (prevVoltages.size() - rem) / numThreads;
-    LOG("Num threads %u, remainders %u", numThreads, rem);
+        omp_set_num_threads(numThreads);
 
-    // Atomic value for concurrent multi-threaded access
-    std::atomic<f64> maxErr(0.0);
+        LOG("Num threads %u", numThreads);
 
-    // Main loop - start with 1 so as not to take slow path on first iter
-    for (u64 i = 1; i <= stop.maxIter; ++i)
-    {
-        // We will just double buffer these 2 vectors to avoid reallocations new<->old
-        std::swap(prevVoltages, voltages);
-        // const ref to avoid damage again
-        const decltype(grid->voltages)& pVoltage = prevVoltages;
-
-        // Used to wrap zip access
         const auto WrapGridAccessNewVal =
-            [&pVoltage, lineLength, numLines] (const std::pair<uint,uint>& pt) -> f64
+            [&voltages, lineLength, numLines] (const std::pair<uint,uint>& pt) -> f64
             {
                 const uint id1 = pt.second * lineLength + (((int)pt.first - 1) < 0
                                                            ? lineLength - 1
@@ -252,202 +226,171 @@ FDMParaZip(Grid* grid, const std::vector<uint>& coordRange,
                                   ? 0
                                   : pt.second + 1) * lineLength + pt.first;
 
-                const f64 newVal = 0.25*(pVoltage[id1] + pVoltage[id2]
-                                         + pVoltage[id3] + pVoltage[id4]);
+                const f64 newVal = 0.25*(voltages[id1] + voltages[id2]
+                                         + voltages[id3] + voltages[id4]);
                 return newVal;
             };
 
-        // Loop over threads (split per thread and complete work chunk)
-#pragma omp parallel for default(none) shared(errorChunk, coordRange, lineLength, voltages, maxErr, i, pVoltage)
-        for (uint thread = 0; thread < numThreads; ++thread)
+        // Atomic value for concurrent multi-threaded access
+        std::atomic<f64> maxErr(0.0);
+
+        // Main loop - start with 1 so as not to take slow path on first iter
+        for (u64 i = 1; i <= stop.maxIter; ++i)
         {
-            // chunk start and end
-            const auto start = coordRange.begin() + thread * blockSize;
-            const auto end = (start + blockSize > coordRange.end()) ? coordRange.end() : start + blockSize;
-            // Unlikely means the branch predictor will always go the
-            // other way, it will have to backtrack on the very rare
-            // cases that this comes up (1 in errorChunk times). This
-            // is a penalty of < 200 cycles on those rare occasions
-            if (unlikely(i % errorChunk ==0))
+            // We will just double buffer these 2 vectors to avoid reallocations new<->old
+            // const ref to avoid damage again
+
+            if (unlikely(i % errorChunk == 0))
             {
-                // Atomic comparisons are slow compared to normal
-                // scalars, so declare a thread-local maxErr and then
-                // just update the main one at the end
-                f64 threadMaxErr = 0.0;
                 maxErr = 0.0;
 
-                // Loop over the non-fixed points in the threaded region
-                for (auto coord = start; coord < end; ++coord)
+#pragma omp parallel for default(none) shared(redPts, lineLength, voltages, maxErr)
+                for (auto c = redPts.begin(); c < redPts.end(); ++c)
                 {
-                    // Apply finite difference method and calculate error
-                    const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                    voltages[*coord] = newVal;
-                    const f64 absErr = std::abs((pVoltage[*coord] - newVal)/newVal);
+                    const f64 prev = voltages[*c];
+                    const f64 newVal = 0.25 * (voltages[*c + 1] + voltages[*c - 1] + voltages[*c - lineLength] + voltages[*c + lineLength]);
+                    voltages[*c] = newVal;
 
-                    if (absErr > threadMaxErr)
+                    const f64 absErr = std::abs((prev - newVal)/newVal);
+
+                    const f64 currentMax =  maxErr.load();
+                    if (absErr > currentMax)
                     {
-                        threadMaxErr = absErr;
+                        maxErr = absErr;
                     }
                 }
 
-                // Update global error
-                if (threadMaxErr > maxErr)
+#pragma omp parallel for default(none) shared(blkPts, lineLength, voltages, maxErr)
+                for (auto c = blkPts.begin(); c < blkPts.end(); ++c)
                 {
-                    maxErr = threadMaxErr;
+                    const f64 prev = voltages[*c];
+                    const f64 newVal = 0.25 * (voltages[*c + 1] + voltages[*c - 1] + voltages[*c - lineLength] + voltages[*c + lineLength]);
+                    voltages[*c] = newVal;
+
+                    const f64 absErr = std::abs((prev - newVal)/newVal);
+
+                    if (absErr > maxErr)
+                    {
+                        maxErr = absErr;
+                    }
+                }
+
+                for (const auto& coord : hZip)
+                {
+                    const uint index = coord.second * lineLength + coord.first;
+                    const f64 prev = voltages[index];
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((prev - newVal)/newVal);
+
+                    if (absErr > maxErr)
+                    {
+                        maxErr = absErr;
+                    }
+                }
+
+                for (const auto& coord : vZip)
+                {
+                    const uint index = coord.second * lineLength + coord.first;
+                    const f64 prev = voltages[index];
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((prev - newVal)/newVal);
+
+                    if (absErr > maxErr)
+                    {
+                        maxErr = absErr;
+                    }
+                }
+
+                for (const auto& coord : hvZip)
+                {
+                    const uint index = coord.second * lineLength + coord.first;
+                    const f64 prev = voltages[index];
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    voltages[index] = newVal;
+                    const f64 absErr = std::abs((prev - newVal)/newVal);
+
+                    if (absErr > maxErr)
+                    {
+                        maxErr = absErr;
+                    }
+                }
+
+
+                if (maxErr < stop.zeroTol)
+                {
+                    LOG("Performed %u iterations, max error: %e", (unsigned)i, maxErr.load());
+                    return;
+                }
+
+                // NOTE(Chris): Report error every 5000 iterations
+                if (i % 5000 == 0)
+                {
+                    // If this is calculated near the beginning it tends
+                    // to overshoot, go to a quarter to refine the counter
+                    // (we use a modulo anyway so it will still stop at
+                    // the prediction)
+                    LOG("Relative change after %u iterations %f", (unsigned)i, maxErr.load());
                 }
             }
             else // normal path
             {
-                // Loop over the non-fixed points and apply the FDM only
-                for (auto coord = start; coord < end; ++coord)
+
+#pragma omp parallel for default(none) shared(redPts, lineLength, voltages)
+                for (auto c = redPts.begin(); c < redPts.end(); ++c)
                 {
-                    const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                    voltages[*coord] = newVal;
+                    const f64 newVal = 0.25 * (voltages[*c + 1] + voltages[*c - 1] + voltages[*c - lineLength] + voltages[*c + lineLength]);
+                    voltages[*c] = newVal;
+                }
+
+#pragma omp parallel for default(none) shared(blkPts, lineLength, voltages)
+                for (auto c = blkPts.begin(); c < blkPts.end(); ++c)
+                {
+                    const f64 newVal = 0.25 * (voltages[*c + 1] + voltages[*c - 1] + voltages[*c - lineLength] + voltages[*c + lineLength]);
+                    voltages[*c] = newVal;
+                }
+
+                for (const auto& coord : hZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (const auto& coord : vZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
+                }
+
+                for (const auto& coord : hvZip)
+                {
+                    const f64 newVal = WrapGridAccessNewVal(coord);
+                    const uint index = coord.second * lineLength + coord.first;
+                    voltages[index] = newVal;
                 }
             }
         }
 
-        // Handle the remaining non-fixed cells of the array that were
-        // not handled by the threaded section - otherwise almost the
-        // same as immediately above, but also reassigns the fixed
-        // points
-        const auto remBegin = coordRange.begin() + (numThreads) * blockSize;
-        const auto remEnd = coordRange.end();
-        if (unlikely(i % errorChunk == 0)) // several differences in this branch
-        {
-            f64 localMaxErr = 0.0;
-            const auto remBegin = coordRange.begin() + (numThreads) * blockSize;
-            const auto remEnd = coordRange.end();
-            for (auto coord = remBegin; coord < remEnd; ++coord)
-            {
-                const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                voltages[*coord] = newVal;
-                const f64 absErr = std::abs((pVoltage[*coord] - newVal)/newVal);
-
-                if (absErr > localMaxErr)
-                    localMaxErr = absErr;
-            }
-
-            for (const auto& coord : hZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
-
-                if (absErr > localMaxErr)
-                {
-                    localMaxErr = absErr;
-                }
-            }
-
-            for (const auto& coord : vZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
-
-                if (absErr > localMaxErr)
-                {
-                    localMaxErr = absErr;
-                }
-            }
-
-            for (const auto& coord : hvZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
-
-                if (absErr > localMaxErr)
-                {
-                    localMaxErr = absErr;
-                }
-            }
-
-            if (localMaxErr > maxErr)
-            {
-                maxErr = localMaxErr;
-            }
-
-            // If we have converged, then break by leaving the function
-            // TODO(Chris): Time logging
-            if (maxErr < stop.zeroTol)
-            {
-                LOG("Performed %u iterations, max error: %e", (unsigned)i, maxErr.load());
-                return;
-            }
-
-            // Else set new target if possible. If we plot the error
-            // per iteration we not that it remains fixed at 1.0 until
-            // all cells have been filled, after this point it drops
-            // roughly as k*i^{-2} where k is a constant and i is the
-            // number of iterations. => err_i * i^2 = err_j * j^2. So
-            // when err_j is zeroTol, and err_i has been calculated we
-            // can find an approximate value for j
-            if (maxErr < 1.0)
-            {
-                // If this is calculated near the beginning it tends
-                // to overshoot, go to a quarter to refine the counter
-                // (we use a modulo anyway so it will still stop at
-                // the prediction)
-                errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
-                LOG("New target index divisor %u", errorChunk);
-            }
-        }
-        else
-        {
-            for (auto coord = remBegin; coord < remEnd; ++coord)
-            {
-                const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                voltages[*coord] = newVal;
-            }
-
-            for (const auto& coord : hZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-            }
-
-            for (const auto& coord : vZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-            }
-
-            for (const auto& coord : hvZip)
-            {
-                const f64 newVal = WrapGridAccessNewVal(coord);
-                const uint index = coord.second * lineLength + coord.first;
-                voltages[index] = newVal;
-            }
-        }
-    }
     LOG("Overran max iteration counter (%u), max error: %f", (unsigned)stop.maxIter, maxErr.load());
 }
 
-/// Single threaded finite difference implementation that ignores
+/// Single threaded RedBlack implementation that ignores
 /// the outer row/column of points where points may need to be
 /// fixed. Thus, these all need to be fixed points. If handled by
 /// the dispatch function then this is all handled automagically
 static
 void
-FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
+RedBlackSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts, const StopParams& stop)
 {
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
-
     JasUnpack((*grid), voltages, lineLength);
 
     // Check error every 500 iterations at first
     const uint errorChunk = 500;
 
+    // Max relative change
     f64 maxErr = 0.0;
     // Main loop - start from 1 so as not to calculate error on first iteration
     for (u64 i = 1; i <= stop.maxIter; ++i)
@@ -456,11 +399,10 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
         // other way, it will have to backtrack on the very rare
         // cases that this comes up (1 in errorChunk times). This
         // is a penalty of < 200 cycles on those rare occasions
+
+        // Calculate and check error every chunk (500 iterations by default)
         if (unlikely(i % errorChunk == 0))
         {
-            // Atomic comparisons are slow compared to normal
-            // scalars, so declare a thread-local maxErr and then
-            // just update the main one at the end
             maxErr = 0.0;
 
             // Loop over the non-fixed points
@@ -498,26 +440,17 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
                 return;
             }
 
-            // Else set new target if possible. If we plot the error
-            // per iteration we not that it remains fixed at 1.0 until
-            // all cells have been filled, after this point it drops
-            // roughly as k*i^{-2} where k is a constant and i is the
-            // number of iterations. => err_i * i^2 = err_j * j^2. So
-            // when err_j is zeroTol, and err_i has been calculated we
-            // can find an approximate value for j
-            if (maxErr < 1.0)
+            if (i % 5000 == 0)
             {
-                // If this is calculated near the beginning it tends
-                // to overshoot, go to a quarter to refine the counter
-                // (we use a modulo anyway so it will still stop at
-                // the prediction)
+                // Output current error every 5000 iterations
                 LOG("Relative change after %u iterations %f", (unsigned)i, maxErr);
             }
         }
         else // normal path
         {
-            // Loop over the non-fixed points and apply the FDM only
-            // for (auto coord = coordRange.begin(); coord < coordRange.end(); ++coord)
+            // Loop over the non-fixed points and apply the RedBlack,
+            // no error calculations -- that comparison is costly for
+            // the cache
             for (const auto c : redPts)
             {
                 const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
@@ -537,163 +470,145 @@ FDMSingleNoZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<ui
 /// account that some points need to be zipped
 static
 void
-FDMSingleZip(Grid* grid, const std::vector<uint>& coordRange,
+RedBlackSingleZip(Grid* grid, const std::vector<uint>& redPts, const std::vector<uint>& blkPts,
              const StopParams& stop, const PreprocessedGridZips& zips)
 {
-    // NOTE(Chris): Single Threaded variant
-
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
-
-    JasUnpack((*grid), voltages, numLines, lineLength);
+    JasUnpack((*grid), voltages, lineLength, numLines);
     JasUnpack(zips, hZip, vZip, hvZip);
 
-    // Create the previous voltage array from the current array
-    decltype(grid->voltages) prevVoltages(voltages);
+    const auto WrapGridAccessNewVal =
+        [&voltages, lineLength, numLines] (const std::pair<uint,uint>& pt) -> f64
+        {
+            const uint id1 = pt.second * lineLength + (((int)pt.first - 1) < 0
+                                                        ? lineLength - 1
+                                                        : pt.first - 1);
+
+            const uint id2 = pt.second * lineLength + (pt.first + 1 >= lineLength
+                                                        ? 0
+                                                        : pt.first + 1);
+            const uint id3 = (((int)pt.second - 1) < 0
+                                ? numLines - 1
+                                : pt.second - 1) * lineLength + pt.first;
+
+            const uint id4 = (pt.second + 1 >= numLines
+                                ? 0
+                                : pt.second + 1) * lineLength + pt.first;
+
+            const f64 newVal = 0.25*(voltages[id1] + voltages[id2]
+                                        + voltages[id3] + voltages[id4]);
+            return newVal;
+        };
 
     // Check error every 500 iterations at first
-    uint errorChunk = 500;
+    const uint errorChunk = 500;
 
     f64 maxErr = 0.0;
-
     // Main loop - start from 1 so as not to calculate error on first iteration
     for (u64 i = 1; i <= stop.maxIter; ++i)
     {
-        // We will just double buffer these 2 vectors to avoid reallocations new<->old
-        std::swap(prevVoltages, voltages);
-        // const ref to avoid damage again
-        const decltype(grid->voltages)& pVoltage = prevVoltages;
-
-        // Used to wrap zip access
-        auto WrapGridAccessNewVal = [&pVoltage, numLines, lineLength] (const std::pair<uint,uint>& pt) -> f64
-            {
-                const uint id1 = pt.second * lineLength + ((int)pt.first - 1 < 0
-                                                           ? lineLength - 1
-                                                           : pt.first - 1);
-
-                const uint id2 = pt.second * lineLength + (pt.first + 1 >= lineLength
-                                                           ? 0
-                                                           : pt.first + 1);
-                const uint id3 = ((int)pt.second - 1 < 0
-                                  ? numLines - 1
-                                  : pt.second - 1) * lineLength + pt.first;
-
-                const uint id4 = (pt.second + 1 >= numLines
-                                  ? 0
-                                  : pt.second + 1) * lineLength + pt.first;
-
-                const f64 newVal = 0.25*(pVoltage[id1] + pVoltage[id2]
-                                         + pVoltage[id3] + pVoltage[id4]);
-                return newVal;
-            };
-
-        // Unlikely means the branch predictor will always go the
-        // other way, it will have to backtrack on the very rare
-        // cases that this comes up (1 in errorChunk times). This
-        // is a penalty of < 200 cycles on those rare occasions
         if (unlikely(i % errorChunk == 0))
         {
-            // Atomic comparisons are slow compared to normal
-            // scalars, so declare a thread-local maxErr and then
-            // just update the main one at the end
-            f64 threadMaxErr = 0.0;
             maxErr = 0.0;
 
             // Loop over the non-fixed points
-            for (auto coord = coordRange.begin(); coord < coordRange.end(); ++coord)
+            for (const auto c : redPts)
             {
-                // Apply finite difference method and calculate error
-                const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                voltages[*coord] = newVal;
-                const f64 absErr = std::abs((pVoltage[*coord] - newVal)/newVal);
+                const f64 prevVal = voltages[c];
+                const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
 
-                if (absErr > threadMaxErr)
+                voltages[c] = newVal;
+                const f64 absErr = std::abs((prevVal - newVal)/newVal);
+
+                if (absErr > maxErr)
                 {
-                    threadMaxErr = absErr;
+                    maxErr = absErr;
+                }
+            }
+
+            for (const auto c : blkPts)
+            {
+                const f64 prevVal = voltages[c];
+                const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
+
+                voltages[c] = newVal;
+                const f64 absErr = std::abs((prevVal - newVal)/newVal);
+
+                if (absErr > maxErr)
+                {
+                    maxErr = absErr;
                 }
             }
 
             for (const auto& coord : hZip)
             {
-                const f64 newVal = WrapGridAccessNewVal(coord);
                 const uint index = coord.second * lineLength + coord.first;
+                const f64 prev = voltages[index];
+                const f64 newVal = WrapGridAccessNewVal(coord);
                 voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+                const f64 absErr = std::abs((prev - newVal)/newVal);
 
-                if (absErr > threadMaxErr)
+                if (absErr > maxErr)
                 {
-                    threadMaxErr = absErr;
+                    maxErr = absErr;
                 }
             }
 
             for (const auto& coord : vZip)
             {
-                const f64 newVal = WrapGridAccessNewVal(coord);
                 const uint index = coord.second * lineLength + coord.first;
+                const f64 prev = voltages[index];
+                const f64 newVal = WrapGridAccessNewVal(coord);
                 voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+                const f64 absErr = std::abs((prev - newVal)/newVal);
 
-                if (absErr > threadMaxErr)
+                if (absErr > maxErr)
                 {
-                    threadMaxErr = absErr;
+                    maxErr = absErr;
                 }
             }
 
             for (const auto& coord : hvZip)
             {
-                const f64 newVal = WrapGridAccessNewVal(coord);
                 const uint index = coord.second * lineLength + coord.first;
+                const f64 prev = voltages[index];
+                const f64 newVal = WrapGridAccessNewVal(coord);
                 voltages[index] = newVal;
-                const f64 absErr = std::abs((pVoltage[coord.second * lineLength + coord.first] - newVal)/newVal);
+                const f64 absErr = std::abs((prev - newVal)/newVal);
 
-                if (absErr > threadMaxErr)
+                if (absErr > maxErr)
                 {
-                    threadMaxErr = absErr;
+                    maxErr = absErr;
                 }
             }
 
-            // Update global error
-            if (threadMaxErr > maxErr)
-            {
-                maxErr = threadMaxErr;
-            }
-
             // If we have converged, then break by leaving the function
-            // TODO(Chris): Time logging
             if (maxErr < stop.zeroTol)
             {
                 LOG("Performed %u iterations, max error: %f", (unsigned)i, maxErr);
                 return;
             }
 
-            // Else set new target if possible. If we plot the error
-            // per iteration we not that it remains fixed at 1.0 until
-            // all cells have been filled, after this point it drops
-            // roughly as k*i^{-2} where k is a constant and i is the
-            // number of iterations. => err_i * i^2 = err_j * j^2. So
-            // when err_j is zeroTol, and err_i has been calculated we
-            // can find an approximate value for j
-            if (maxErr < 1.0)
+            // Log error every 5000 iterations
+            if (i % 5000 == 0)
             {
-                // If this is calculated near the beginning it tends
-                // to overshoot, go to a quarter to refine the counter
-                // (we use a modulo anyway so it will still stop at
-                // the prediction)
-                errorChunk = 0.25 * sqrt(maxErr * (f64)Square(i) / stop.zeroTol);
-                LOG("New target index divisor %u", errorChunk);
+                LOG("Relative change after %u iterations %f", (unsigned)i, maxErr);
             }
         }
         else // normal path
         {
-            // Loop over the non-fixed points and apply the FDM only
-            for (auto coord = coordRange.begin(); coord < coordRange.end(); ++coord)
+            // Loop over the non-fixed points and apply the RedBlack
+            for (const auto c : redPts)
             {
-                const f64 newVal = 0.25 * (pVoltage[(*coord) + 1] + pVoltage[(*coord) - 1] + pVoltage[(*coord) - lineLength] + pVoltage[(*coord) + lineLength]);
-                voltages[*coord] = newVal;
+                const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
+                voltages[c] = newVal;
+            }
+            for (const auto c : blkPts)
+            {
+                const f64 newVal = 0.25 * (voltages[c + 1] + voltages[c - 1] + voltages[c - lineLength] + voltages[c + lineLength]);
+                voltages[c] = newVal;
             }
 
+            // Handle the exterior Zip points by wrapping around the grid
             for (const auto& coord : hZip)
             {
                 const f64 newVal = WrapGridAccessNewVal(coord);
@@ -855,7 +770,7 @@ PreprocessGridZips(const Grid& grid)
 
 /// The dispatch function for finite difference method. Checks the
 /// validity of the grid WRT zip parameters and then dispatches it
-/// to 1 of 4 worked functions, depending on whether it has zips,
+/// to 1 of 4 worker functions, depending on whether it has zips,
 /// and whether we are running parallel code or not
 void
 RedBlackSolver(Grid* grid, const f64 zeroTol,
@@ -867,19 +782,6 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
     // the most appropriate function (zips or not, parallel or
     // not), after having preprocessed the grid to check its
     // validity
-
-    // NOTE(Chris): The only way I can think of to improve this from
-    // here is SIMD. But that also poses certain problems, we'd need
-    // to iterate over all cells (for memory alignedness), rather than
-    // just the non-fixed cells, then we would need to reassign the
-    // fixed cells (would blow the cache), even with AVX we probably
-    // wouldn't get more than a 2.5x gain unless I'm missing something
-    // algorithmically
-
-    // NOTE(Chris): We need d2phi/dx^2 + d2phi/dy^2 = 0
-    // => 1/h^2 * ((phi(x+1,y) - 2phi(x,y) + phi(x-1,y))
-    //           + (phi(x,y+1) - 2phi(x,y) + phi(x,y-1))
-    // => phi(x,y) = 1/4 * (phi(x+1,y) + phi(x-1,y) + phi(x,y+1) + phi(x,y-1))
 
     JasUnpack((*grid), horizZip, verticZip, numLines, lineLength, fixedPoints);
 
@@ -936,15 +838,20 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
     } break;
     }
 
+    // NOTE(Chris): No need to use the more complex parallel routines
+    // if we only have 1 thread available
+    if (omp_get_max_threads() == 1)
+        parallel = false;
+
     if (!verticZip && !horizZip)
     {
         if (parallel)
         {
-            FDMParaNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
+            RedBlackParaNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
         }
         else
         {
-            FDMSingleNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
+            RedBlackSingleNoZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter));
         }
         return;
     }
@@ -953,13 +860,11 @@ RedBlackSolver(Grid* grid, const f64 zeroTol,
 
     if (parallel)
     {
-        LOG("Sorry, not yet implemented");
-        // FDMParaZip(grid, coordRangeRed, StopParams(zeroTol, maxIter), zips);
+        RedBlackParaZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
     }
     else
     {
-        LOG("Sorry, not yet implemented");
-        // FDMSingleZip(grid, coordRangeRed, StopParams(zeroTol, maxIter), zips);
+        RedBlackSingleZip(grid, coordRangeRed, coordRangeBlack, StopParams(zeroTol, maxIter), zips);
     }
 }
 }

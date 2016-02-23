@@ -8,7 +8,6 @@
    ========================================================================== */
 
 #define REDBLACK_H
-// Finite difference method implementations
 
 #include "GlobalDefines.hpp"
 
